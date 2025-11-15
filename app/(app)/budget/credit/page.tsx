@@ -213,14 +213,16 @@ export default function BudgetCreditsPage() {
               </option>
             ))}
           </select>
-          <input
-            type="date"
-            name="date"
-            value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            required
-            className="p-2 border rounded bg-white dark:bg-neutral-900 min-w-0"
-          />
+          <div className="flex flex-col">
+            <input
+              type="date"
+              name="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              required
+              className="p-2 border rounded bg-white dark:bg-neutral-900 min-w-0 w-full overflow-hidden text-sm"
+            />
+          </div>
         </div>
         <button
           type="submit"
@@ -259,7 +261,7 @@ export default function BudgetCreditsPage() {
         ))}
       </div>
       {/* Tableau desktop */}
-      <div className="mt-4 overflow-x-auto hidden sm:block">
+      <div className="mt-4 overflow-x-auto hidden sm:block table-wrapper">
         <table className="w-full border-collapse border border-gray-300 dark:border-neutral-700 text-sm">
         <thead>
           <tr className="bg-gray-200 dark:bg-neutral-800 border border-black dark:border-neutral-700">
