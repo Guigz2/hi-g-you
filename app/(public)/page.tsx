@@ -11,32 +11,56 @@ export default function Home() {
     const apps = [
     {
       title: 'Budget App',
-      color: 'from-red-500 to-orange-500',
-      image: '/icons/homepage//budget-icon.png',
-      href: '/(app)/budget',
+      color: 'from-orange-400 to-orange-600',
+      image: '/icons/homepage/budget-icon.png',
+      href: '/budget/transactions',
     },
     {
       title: 'Tasking App',
-      color: 'from-blue-500 to-cyan-500',
+      color: 'from-blue-500 to-sky-500',
       image: '/icons/homepage/tasking-icon.png',
-      href: '/(app)/tasking',
+      href: '/tasking',
+    },
+    {
+      title: 'Cloud App',
+      color: 'from-indigo-500 to-purple-600',
+      image: '/icons/homepage/cloud-icon.png',
+      href: '/cloud',
     },
     {
       title: 'Supermarket App',
-      color: 'from-green-500 to-lime-500',
-      image: '/icons/homepage//supermarket-icon.png',
-      href: '/(app)/supermarket',
+      color: 'from-green-500 to-emerald-600',
+      image: '/icons/homepage/supermarket-icon.png',
+      href: '/supermarket',
     },
     {
-      title: 'Sports app',
-      color: 'from-yellow-400 to-red-400',
+      title: 'Sports App',
+      color: 'from-red-500 to-fuchsia-600',
       image: '/icons/homepage/sports-icon.png',
       href: 'https://sports.eguguillaume.com',
+    },
+    {
+      title: 'Portfolio',
+      color: 'from-teal-500 to-cyan-600',
+        image: '/icons/homepage/portfolio-icon.png',
+        href: 'https://www.eguguillaume.com',
+    },
+    {
+      title: 'Apo Gift App',
+      color: 'from-pink-400 to-lime-500',
+      image: '/icons/homepage/apogift-icon.png',
+      href: 'https://apo.eguguillaume.com',
+    },
+    {
+      title: 'Profile',
+      color: 'from-gray-500 to-gray-700',
+      image: '/icons/homepage/profile-icon.png',
+      href: '/profile',
     }
   ];
 
   return (
-    <main className="min-h-screen bg-white text-black flex flex-col items-center">
+    <main className="min-h-screen bg-background text-foreground flex flex-col items-center bg-white">
       {/* Header */}
       <div className="w-full bg-gradient-to-r from-pink-400 to-purple-600 py-12 text-center">
         <h1 className={`${pressStart.className} text-3xl md:text-5xl font-bold text-white`}>
