@@ -42,6 +42,17 @@ const categoryColors: Record<string, string> = {
   Retrait: "bg-gray-400",
   Autres: "bg-gray-200",
 };
+const softCategoryColors: Record<string, string> = {
+  Loisir: "bg-purple-50 dark:bg-purple-900/30",
+  Logement: "bg-green-50 dark:bg-green-900/30",
+  "Santé/bien-être": "bg-red-50 dark:bg-red-900/30",
+  Transport: "bg-yellow-50 dark:bg-yellow-900/30",
+  Alimentation: "bg-blue-50 dark:bg-blue-900/30",
+  "Frais bancaires exceptionnels": "bg-orange-50 dark:bg-orange-900/30",
+  Abonnement: "bg-teal-50 dark:bg-teal-900/30",
+  Retrait: "bg-gray-50 dark:bg-gray-800/40",
+  Autres: "bg-gray-50 dark:bg-gray-800/40",
+};
 
 export default function BudgetTransactionsPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -250,20 +261,32 @@ export default function BudgetTransactionsPage() {
         {transactions.map((t) => (
           <div
             key={t.id}
-            className={`rounded border border-gray-300 dark:border-neutral-700 p-3 bg-white dark:bg-neutral-900 flex justify-between gap-3`}
+            className={`rounded border border-gray-300 dark:border-neutral-700 p-3 flex justify-between gap-3 ${softCategoryColors[t.category] || 'bg-white dark:bg-neutral-900'}`}
           >
-            <div className="text-sm min-w-0">
+            <div className="flex flex-col min-w-0 text-sm">
               <p className="font-medium truncate">{t.description}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                 {new Date(t.date).toLocaleDateString()} • {t.category}
               </p>
-            </div>
-            <div className="text-right flex flex-col items-end">
-              <p className="font-semibold text-sm">{t.amount} €</p>
-              <div className="mt-1 flex gap-2 text-xs">
-                <button onClick={() => handleEdit(t)} className="text-blue-600 hover:text-blue-800">✏️</button>
-                <button onClick={() => handleDelete(t.id)} className="text-red-600 hover:text-red-800">🗑️</button>
+              <div className="mt-2">
+                <button
+                  onClick={() => handleEdit(t)}
+                  className="text-blue-600 hover:text-blue-800 text-xs"
+                  aria-label="Modifier dépense"
+                >
+                  ✏️ Modifier
+                </button>
               </div>
+            </div>
+            <div className="flex flex-col items-end justify-between">
+              <p className="font-semibold text-sm">{t.amount} €</p>
+              <button
+                onClick={() => handleDelete(t.id)}
+                className="text-red-600 hover:text-red-800 text-xs"
+                aria-label="Supprimer dépense"
+              >
+                🗑️ Supprimer
+              </button>
             </div>
           </div>
         ))}

@@ -35,6 +35,14 @@ const categoryColors: Record<string, string> = {
   "Revenu passif": "bg-purple-200",
   Autres: "bg-gray-200",
 };
+// Variante douce pour les cartes mobile (moins saturé)
+const softCategoryColors: Record<string, string> = {
+  Salaire: "bg-green-50 dark:bg-green-900/30",
+  Prime: "bg-blue-50 dark:bg-blue-900/30",
+  Remboursement: "bg-yellow-50 dark:bg-yellow-900/30",
+  "Revenu passif": "bg-purple-50 dark:bg-purple-900/30",
+  Autres: "bg-gray-50 dark:bg-gray-800/40",
+};
 
 export default function BudgetCreditsPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -242,20 +250,32 @@ export default function BudgetCreditsPage() {
         {credits.map((credit) => (
           <div
             key={credit.id}
-            className={`rounded border border-gray-300 dark:border-neutral-700 p-3 bg-white dark:bg-neutral-900 flex justify-between gap-3`}
+            className={`rounded border border-gray-300 dark:border-neutral-700 p-3 flex justify-between gap-3 ${softCategoryColors[credit.category] || 'bg-white dark:bg-neutral-900'}`}
           >
-            <div className="text-sm min-w-0">
+            <div className="flex flex-col min-w-0 text-sm">
               <p className="font-medium truncate">{credit.description}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                 {new Date(credit.date).toLocaleDateString()} • {credit.category}
               </p>
-            </div>
-            <div className="text-right flex flex-col items-end">
-              <p className="font-semibold text-sm">{credit.amount} €</p>
-              <div className="mt-1 flex gap-2 text-xs">
-                <button onClick={() => handleEdit(credit)} className="text-blue-600 hover:text-blue-800">✏️</button>
-                <button onClick={() => handleDelete(credit.id)} className="text-red-600 hover:text-red-800">🗑️</button>
+              <div className="mt-2">
+                <button
+                  onClick={() => handleEdit(credit)}
+                  className="text-blue-600 hover:text-blue-800 text-xs"
+                  aria-label="Modifier crédit"
+                >
+                  ✏️ Modifier
+                </button>
               </div>
+            </div>
+            <div className="flex flex-col items-end justify-between">
+              <p className="font-semibold text-sm">{credit.amount} €</p>
+              <button
+                onClick={() => handleDelete(credit.id)}
+                className="text-red-600 hover:text-red-800 text-xs"
+                aria-label="Supprimer crédit"
+              >
+                🗑️ Supprimer
+              </button>
             </div>
           </div>
         ))}
