@@ -169,61 +169,63 @@ export default function BudgetCreditsPage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-center">💰 Mes Crédits 💰</h1>
+    <div className="p-4 sm:p-6">
+      <h1 className="text-xl sm:text-2xl font-bold text-center">💰 Mes Crédits 💰</h1>
 
       {error && (
         <div className="mt-4 p-3 rounded bg-red-100 text-red-700 text-sm">{error}</div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-4 p-4 bg-gray-100 dark:bg-neutral-800 rounded-lg">
-        <input
-          type="text"
-          name="description"
-          placeholder="Description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          required
-          className="w-full p-2 border rounded bg-white dark:bg-neutral-900"
-        />
-        <input
-          type="number"
-          step="0.01"
-          name="amount"
-          placeholder="Montant"
-          value={formData.amount}
-          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-          required
-          className="w-full p-2 border rounded mt-2 bg-white dark:bg-neutral-900"
-        />
-        <select
-          name="category"
-          value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          required
-          className="w-full p-2 border rounded mt-2 bg-white dark:bg-neutral-900"
-        >
-          <option value="" disabled>
-            Choisir une catégorie
-          </option>
-          {creditCategories.map((category) => (
-            <option key={category} value={category}>
-              {category}
+      <form onSubmit={handleSubmit} className="mt-4 p-4 bg-gray-100 dark:bg-neutral-800 rounded-lg space-y-3">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input
+            type="text"
+            name="description"
+            placeholder="Description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            required
+            className="p-2 border rounded bg-white dark:bg-neutral-900 min-w-0"
+          />
+          <input
+            type="number"
+            step="0.01"
+            name="amount"
+            placeholder="Montant"
+            value={formData.amount}
+            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+            required
+            className="p-2 border rounded bg-white dark:bg-neutral-900 min-w-0"
+          />
+          <select
+            name="category"
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            required
+            className="p-2 border rounded bg-white dark:bg-neutral-900 sm:col-span-1 min-w-0"
+          >
+            <option value="" disabled>
+              Catégorie
             </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          name="date"
-          value={formData.date}
-          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-          required
-          className="w-full p-2 border rounded mt-2 bg-white dark:bg-neutral-900"
-        />
+            {creditCategories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            name="date"
+            value={formData.date}
+            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+            required
+            className="p-2 border rounded bg-white dark:bg-neutral-900 min-w-0"
+          />
+        </div>
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white p-2 rounded mt-2 w-full"
+          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white p-2 rounded w-full"
         >
           {editingId ? "Modifier" : "Ajouter"}
         </button>
@@ -233,7 +235,32 @@ export default function BudgetCreditsPage() {
         💰 Total des crédits du mois : {getTotalForCurrentMonth()} €
       </div>
 
-      <table className="mt-4 w-full border-collapse border border-gray-300 dark:border-neutral-700">
+      {/* Vue cartes mobile */}
+      <div className="mt-6 space-y-3 sm:hidden">
+        {credits.map((credit) => (
+          <div
+            key={credit.id}
+            className={`rounded border border-gray-300 dark:border-neutral-700 p-3 bg-white dark:bg-neutral-900 flex justify-between gap-3`}
+          >
+            <div className="text-sm min-w-0">
+              <p className="font-medium truncate">{credit.description}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                {new Date(credit.date).toLocaleDateString()} • {credit.category}
+              </p>
+            </div>
+            <div className="text-right flex flex-col items-end">
+              <p className="font-semibold text-sm">{credit.amount} €</p>
+              <div className="mt-1 flex gap-2 text-xs">
+                <button onClick={() => handleEdit(credit)} className="text-blue-600 hover:text-blue-800">✏️</button>
+                <button onClick={() => handleDelete(credit.id)} className="text-red-600 hover:text-red-800">🗑️</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {/* Tableau desktop */}
+      <div className="mt-4 overflow-x-auto hidden sm:block">
+        <table className="w-full border-collapse border border-gray-300 dark:border-neutral-700 text-sm">
         <thead>
           <tr className="bg-gray-200 dark:bg-neutral-800 border border-black dark:border-neutral-700">
             <th className="text-center p-2 border border-black dark:border-neutral-700">Description</th>
@@ -243,24 +270,25 @@ export default function BudgetCreditsPage() {
             <th className="text-center p-2 border border-black dark:border-neutral-700">Actions</th>
           </tr>
         </thead>
-        <tbody>
-          {credits.map((credit) => (
-            <tr
-              key={credit.id}
-              className={`${categoryColors[credit.category] || "bg-white dark:bg-neutral-900"} border border-black dark:border-neutral-700`}
-            >
-              <td className="text-center p-2 border border-black dark:border-neutral-700">{credit.description}</td>
-              <td className="text-center p-2 border border-black dark:border-neutral-700">{credit.amount}</td>
-              <td className="text-center p-2 border border-black dark:border-neutral-700">{credit.category}</td>
-              <td className="text-center p-2 border border-black dark:border-neutral-700">{new Date(credit.date).toLocaleDateString()}</td>
-              <td className="text-center p-2 border border-black dark:border-neutral-700 space-x-2">
-                <button onClick={() => handleEdit(credit)} className="text-blue-600 hover:text-blue-800">✏️</button>
-                <button onClick={() => handleDelete(credit.id)} className="text-red-600 hover:text-red-800">🗑️</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          <tbody>
+            {credits.map((credit) => (
+              <tr
+                key={credit.id}
+                className={`${categoryColors[credit.category] || "bg-white dark:bg-neutral-900"} border border-black dark:border-neutral-700`}
+              >
+                <td className="text-center p-2 border border-black dark:border-neutral-700 whitespace-nowrap max-w-[180px] truncate" title={credit.description}>{credit.description}</td>
+                <td className="text-center p-2 border border-black dark:border-neutral-700 whitespace-nowrap">{credit.amount}</td>
+                <td className="text-center p-2 border border-black dark:border-neutral-700 whitespace-nowrap">{credit.category}</td>
+                <td className="text-center p-2 border border-black dark:border-neutral-700 whitespace-nowrap">{new Date(credit.date).toLocaleDateString()}</td>
+                <td className="text-center p-2 border border-black dark:border-neutral-700 space-x-2 whitespace-nowrap">
+                  <button onClick={() => handleEdit(credit)} className="text-blue-600 hover:text-blue-800">✏️</button>
+                  <button onClick={() => handleDelete(credit.id)} className="text-red-600 hover:text-red-800">🗑️</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
