@@ -61,9 +61,17 @@ export default function BudgetCreditsPage() {
   useEffect(() => {
     const fetchCredits = async () => {
       setError(null);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setCredits([]);
+        return;
+      }
       const { data, error } = await supabase
         .from("credits")
         .select("id, desc, amount, category, date")
+        .eq("user_id", user.id)
         .order("date", { ascending: false });
 
       if (error) {
@@ -94,14 +102,18 @@ export default function BudgetCreditsPage() {
       amount: parseFloat(formData.amount),
       category: formData.category,
       date: formData.date,
+      // multi-tenant: attach user id
+      user_id: (await supabase.auth.getUser()).data.user?.id,
     };
 
     try {
       if (editingId) {
+        const userId = (await supabase.auth.getUser()).data.user?.id;
         const { error } = await supabase
           .from("credits")
           .update(payload)
-          .eq("id", editingId);
+          .eq("id", editingId)
+          .eq("user_id", userId);
         if (error) throw error;
 
         setCredits((prev) =>
@@ -154,7 +166,8 @@ export default function BudgetCreditsPage() {
     if (!credit?.id) return;
     const confirmText = `Confirmer la suppression:\n\nDescription: ${credit.description}\nMontant: ${credit.amount} €\nCatégorie: ${credit.category}\nDate: ${new Date(credit.date).toLocaleDateString()}`;
     if (typeof window !== "undefined" && !window.confirm(confirmText)) return;
-    const { error } = await supabase.from("credits").delete().eq("id", credit.id);
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+    const { error } = await supabase.from("credits").delete().eq("id", credit.id).eq("user_id", userId);
     if (!error) {
       setCredits((prev) => prev.filter((c) => c.id !== credit.id));
     }

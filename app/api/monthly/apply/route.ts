@@ -46,7 +46,7 @@ async function applyMonthly(req: Request) {
   // Fetch monthly payments
   const { data: rows, error: fetchError } = await supabase
     .from("monthly_payment")
-    .select("id, desc, amount, category, type");
+    .select("id, desc, amount, category, type, user_id");
 
   if (fetchError) {
     return NextResponse.json({ error: fetchError.message }, { status: 500 });
@@ -59,6 +59,7 @@ async function applyMonthly(req: Request) {
   for (const p of rows || []) {
     const isCredit = (p.type || "").toLowerCase() === "crédit" || (p.type || "").toLowerCase() === "credit";
     const table = isCredit ? "credits" : "transactions";
+    const userId = (p as any).user_id;
 
     // We prefix applied descriptions with "M-"; check duplicates against both prefixed and original
     const descWithPrefix = (p.desc || "").startsWith("M-") ? p.desc : `M-${p.desc}`;
@@ -75,6 +76,7 @@ async function applyMonthly(req: Request) {
         .eq("desc", descWithPrefix)
         .eq("category", p.category)
         .eq("amount", p.amount)
+        .eq("user_id", userId)
         .maybeSingle();
       existing = data;
       existErr = error;
@@ -89,6 +91,7 @@ async function applyMonthly(req: Request) {
         .eq("desc", p.desc)
         .eq("category", p.category)
         .eq("amount", p.amount)
+        .eq("user_id", userId)
         .maybeSingle();
       existing = data;
       existErr = existErr || error;
@@ -109,6 +112,7 @@ async function applyMonthly(req: Request) {
       amount: typeof p.amount === "string" ? parseFloat(p.amount) : p.amount,
       category: p.category,
       date: periodStartISO,
+      user_id: userId,
     };
 
     const { error: insertErr } = await supabase.from(table).insert([payload]);

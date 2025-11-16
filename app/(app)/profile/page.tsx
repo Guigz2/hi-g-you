@@ -151,7 +151,7 @@ async function signOutAction() {
   "use server";
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/");
 }
 
 async function updateProfileAction(formData: FormData) {

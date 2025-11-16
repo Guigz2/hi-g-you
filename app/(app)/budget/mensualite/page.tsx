@@ -69,9 +69,17 @@ export default function MonthlyPaymentsPage() {
   useEffect(() => {
     const fetchPayments = async () => {
       setError(null);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setPayments([]);
+        return;
+      }
       const { data, error } = await supabase
         .from("monthly_payment")
         .select("id, desc, amount, category, type")
+        .eq("user_id", user.id)
         .order("id", { ascending: false });
 
       if (error) {
@@ -110,14 +118,17 @@ export default function MonthlyPaymentsPage() {
       amount: parseFloat(formData.amount),
       category: formData.category,
       type: formData.type,
+      user_id: (await supabase.auth.getUser()).data.user?.id,
     };
 
     try {
       if (editingId) {
+        const userId = (await supabase.auth.getUser()).data.user?.id;
         const { error } = await supabase
           .from("monthly_payment")
           .update(payload)
-          .eq("id", editingId);
+          .eq("id", editingId)
+          .eq("user_id", userId);
         if (error) throw error;
         setPayments((prev) =>
           prev.map((p) => (p.id === editingId ? { ...formData, id: editingId } : p))
@@ -153,7 +164,8 @@ export default function MonthlyPaymentsPage() {
     if (!payment?.id) return;
     const confirmText = `Confirmer la suppression:\n\nDescription: ${payment.description}\nMontant: ${payment.amount} €\nCatégorie: ${payment.category}\nType: ${payment.type}`;
     if (typeof window !== "undefined" && !window.confirm(confirmText)) return;
-    const { error } = await supabase.from("monthly_payment").delete().eq("id", payment.id);
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+    const { error } = await supabase.from("monthly_payment").delete().eq("id", payment.id).eq("user_id", userId);
     if (!error) {
       setPayments((prev) => prev.filter((p) => p.id !== payment.id));
     }

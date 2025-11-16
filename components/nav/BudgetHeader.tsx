@@ -15,11 +15,10 @@ export default function BudgetHeader() {
   const pathname = usePathname();
 
   const items = [
-    { href: "/budget/transactions", label: "Dépenses", color: "blue" },
-    { href: "/budget/credit", label: "Crédits", color: "blue" },
+    { href: "/budget/transactions", label: "Dépenses", color: "red" },
+    { href: "/budget/credit", label: "Crédits", color: "green" },
     { href: "/budget/mensualite", label: "Mensualité", color: "blue" },
-    { href: "/budget/finances", label: "Finances", color: "green" },
-    { href: "/budget/settings", label: "Paramètres", color: "gray" },
+    { href: "/budget/finances", label: "Finances", color: "orange" }, 
   ];
 
   const colorBase: Record<string, string> = {

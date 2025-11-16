@@ -71,9 +71,17 @@ export default function BudgetTransactionsPage() {
   useEffect(() => {
     const fetchTransactions = async () => {
       setError(null);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setTransactions([]);
+        return;
+      }
       const { data, error } = await supabase
         .from("transactions")
         .select("id, desc, amount, category, date")
+        .eq("user_id", user.id)
         .order("date", { ascending: false });
 
       if (error) {
@@ -104,14 +112,17 @@ export default function BudgetTransactionsPage() {
       amount: parseFloat(formData.amount),
       category: formData.category,
       date: formData.date,
+      user_id: (await supabase.auth.getUser()).data.user?.id,
     };
 
     try {
       if (editingId) {
+        const userId = (await supabase.auth.getUser()).data.user?.id;
         const { error } = await supabase
           .from("transactions")
           .update(payload)
-          .eq("id", editingId);
+          .eq("id", editingId)
+          .eq("user_id", userId);
         if (error) throw error;
 
         setTransactions((prev) =>
@@ -164,7 +175,8 @@ export default function BudgetTransactionsPage() {
     if (!transaction?.id) return;
     const confirmText = `Confirmer la suppression:\n\nDescription: ${transaction.description}\nMontant: ${transaction.amount} €\nCatégorie: ${transaction.category}\nDate: ${new Date(transaction.date).toLocaleDateString()}`;
     if (typeof window !== "undefined" && !window.confirm(confirmText)) return;
-    const { error } = await supabase.from("transactions").delete().eq("id", transaction.id);
+    const userId = (await supabase.auth.getUser()).data.user?.id;
+    const { error } = await supabase.from("transactions").delete().eq("id", transaction.id).eq("user_id", userId);
     if (!error) {
       setTransactions((prev) => prev.filter((t) => t.id !== transaction.id));
     }
