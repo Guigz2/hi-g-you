@@ -150,17 +150,22 @@ export default function BudgetCreditsPage() {
     }
   };
 
-  const handleDelete = async (id?: string) => {
-    if (!id) return;
-    const { error } = await supabase.from("credits").delete().eq("id", id);
+  const handleDelete = async (credit?: Credit) => {
+    if (!credit?.id) return;
+    const confirmText = `Confirmer la suppression:\n\nDescription: ${credit.description}\nMontant: ${credit.amount} €\nCatégorie: ${credit.category}\nDate: ${new Date(credit.date).toLocaleDateString()}`;
+    if (typeof window !== "undefined" && !window.confirm(confirmText)) return;
+    const { error } = await supabase.from("credits").delete().eq("id", credit.id);
     if (!error) {
-      setCredits((prev) => prev.filter((c) => c.id !== id));
+      setCredits((prev) => prev.filter((c) => c.id !== credit.id));
     }
   };
 
   const handleEdit = (credit: Credit) => {
     setFormData(credit);
     setEditingId(credit.id || null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const getTotalForCurrentMonth = () => {
@@ -270,7 +275,7 @@ export default function BudgetCreditsPage() {
             <div className="flex flex-col items-end justify-between">
               <p className="font-semibold text-sm">{credit.amount} €</p>
               <button
-                onClick={() => handleDelete(credit.id)}
+                onClick={() => handleDelete(credit)}
                 className="text-red-600 hover:text-red-800 text-xs"
                 aria-label="Supprimer crédit"
               >
@@ -304,7 +309,7 @@ export default function BudgetCreditsPage() {
                 <td className="text-center p-2 border border-black dark:border-neutral-700 whitespace-nowrap">{new Date(credit.date).toLocaleDateString()}</td>
                 <td className="text-center p-2 border border-black dark:border-neutral-700 space-x-2 whitespace-nowrap">
                   <button onClick={() => handleEdit(credit)} className="text-blue-600 hover:text-blue-800">✏️</button>
-                  <button onClick={() => handleDelete(credit.id)} className="text-red-600 hover:text-red-800">🗑️</button>
+                  <button onClick={() => handleDelete(credit)} className="text-red-600 hover:text-red-800">🗑️</button>
                 </td>
               </tr>
             ))}

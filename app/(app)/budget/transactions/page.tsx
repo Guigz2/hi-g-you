@@ -160,17 +160,22 @@ export default function BudgetTransactionsPage() {
     }
   };
 
-  const handleDelete = async (id?: string) => {
-    if (!id) return;
-    const { error } = await supabase.from("transactions").delete().eq("id", id);
+  const handleDelete = async (transaction?: Transaction) => {
+    if (!transaction?.id) return;
+    const confirmText = `Confirmer la suppression:\n\nDescription: ${transaction.description}\nMontant: ${transaction.amount} €\nCatégorie: ${transaction.category}\nDate: ${new Date(transaction.date).toLocaleDateString()}`;
+    if (typeof window !== "undefined" && !window.confirm(confirmText)) return;
+    const { error } = await supabase.from("transactions").delete().eq("id", transaction.id);
     if (!error) {
-      setTransactions((prev) => prev.filter((t) => t.id !== id));
+      setTransactions((prev) => prev.filter((t) => t.id !== transaction.id));
     }
   };
 
   const handleEdit = (transaction: Transaction) => {
     setFormData(transaction);
     setEditingId(transaction.id || null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const getTotalForCurrentMonth = () => {
@@ -281,7 +286,7 @@ export default function BudgetTransactionsPage() {
             <div className="flex flex-col items-end justify-between">
               <p className="font-semibold text-sm">{t.amount} €</p>
               <button
-                onClick={() => handleDelete(t.id)}
+                onClick={() => handleDelete(t)}
                 className="text-red-600 hover:text-red-800 text-xs"
                 aria-label="Supprimer dépense"
               >
@@ -315,7 +320,7 @@ export default function BudgetTransactionsPage() {
                 <td className="text-center p-2 border border-black dark:border-neutral-700 whitespace-nowrap">{new Date(t.date).toLocaleDateString()}</td>
                 <td className="text-center p-2 border border-black dark:border-neutral-700 space-x-2 whitespace-nowrap">
                   <button onClick={() => handleEdit(t)} className="text-blue-600 hover:text-blue-800">✏️</button>
-                  <button onClick={() => handleDelete(t.id)} className="text-red-600 hover:text-red-800">🗑️</button>
+                  <button onClick={() => handleDelete(t)} className="text-red-600 hover:text-red-800">🗑️</button>
                 </td>
               </tr>
             ))}
