@@ -301,7 +301,7 @@ export default function BudgetCreditsPage() {
             {credits.map((credit) => (
               <tr
                 key={credit.id}
-                className={`${categoryColors[credit.category] || "bg-white dark:bg-neutral-900"} border border-black dark:border-neutral-700`}
+                className={`${categoryColors[credit.category] || "bg-white dark:bg-neutral-900"} border border-black dark:border-neutral-700 dark:text-black`}
               >
                 <td className="text-center p-2 border border-black dark:border-neutral-700 whitespace-nowrap max-w-[180px] truncate" title={credit.description}>{credit.description}</td>
                 <td className="text-center p-2 border border-black dark:border-neutral-700 whitespace-nowrap">{credit.amount}</td>
