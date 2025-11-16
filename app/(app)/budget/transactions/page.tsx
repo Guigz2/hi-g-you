@@ -200,7 +200,7 @@ export default function BudgetTransactionsPage() {
       )}
 
       <form onSubmit={handleSubmit} className="mt-4 p-4 bg-gray-100 dark:bg-neutral-800 rounded-lg space-y-3">
-        <p className="font-semibold text-sm sm:text-base">Ajouter une dépense</p>
+        <p className="font-semibold text-sm sm:text-base">{editingId ? "Modifier une dépense" : "Ajouter une dépense"}</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <input
             type="text"
@@ -258,7 +258,7 @@ export default function BudgetTransactionsPage() {
       </form>
 
       <div className="mt-4 p-4 bg-red-100 dark:bg-red-900 rounded-lg text-red-800 dark:text-red-200 font-bold text-lg">
-        💰 Total des dépenses du mois : {getTotalForCurrentMonth()} €
+        Total des dépenses du mois : {getTotalForCurrentMonth()} €
       </div>
 
       {/* Vue cartes mobile */}

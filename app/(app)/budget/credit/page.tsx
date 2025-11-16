@@ -183,13 +183,14 @@ export default function BudgetCreditsPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <h1 className="text-xl sm:text-2xl font-bold text-center">💰 Mes Crédits 💰</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-left">Mes Crédits</h1>
 
       {error && (
         <div className="mt-4 p-3 rounded bg-red-100 text-red-700 text-sm">{error}</div>
       )}
 
       <form onSubmit={handleSubmit} className="mt-4 p-4 bg-gray-100 dark:bg-neutral-800 rounded-lg space-y-3">
+        <p className="font-semibold text-sm sm:text-base">{editingId ? "Modifier un crédit" : "Ajouter un crédit"}</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <input
             type="text"
@@ -247,7 +248,7 @@ export default function BudgetCreditsPage() {
       </form>
 
       <div className="mt-4 p-4 bg-green-100 dark:bg-green-900 rounded-lg text-green-800 dark:text-green-200 font-bold text-lg">
-        💰 Total des crédits du mois : {getTotalForCurrentMonth()} €
+        Total des crédits du mois : {getTotalForCurrentMonth()} €
       </div>
 
       {/* Vue cartes mobile */}

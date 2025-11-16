@@ -179,13 +179,14 @@ export default function MonthlyPaymentsPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <h1 className="text-xl sm:text-2xl font-bold text-center">💳 Mensualités (Crédits & Dépenses) 💳</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-left">Mensualités (Crédits & Dépenses)</h1>
 
       {error && (
         <div className="mt-4 p-3 rounded bg-red-100 text-red-700 text-sm">{error}</div>
       )}
 
       <form onSubmit={handleSubmit} className="mt-4 p-4 bg-gray-100 dark:bg-neutral-800 rounded-lg space-y-3">
+        <p className="font-semibold text-sm sm:text-base">{editingId ? "Modifier une mensualité" : "Ajouter une mensualité"}</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <input
             type="text"

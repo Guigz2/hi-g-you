@@ -17,8 +17,8 @@ export default function BudgetHeader() {
   const items = [
     { href: "/budget/transactions", label: "Dépenses", color: "blue" },
     { href: "/budget/credit", label: "Crédits", color: "blue" },
-    { href: "/budget/mensualite", label: "Mensuel", color: "blue" },
-    { href: "/budget/goals", label: "Finances", color: "green" },
+    { href: "/budget/mensualite", label: "Mensualité", color: "blue" },
+    { href: "/budget/finances", label: "Finances", color: "green" },
     { href: "/budget/settings", label: "Paramètres", color: "gray" },
   ];
 
