@@ -98,6 +98,43 @@ export async function listFolder(folderId: string | null) {
   return { folders: folders || [], files: files || [] };
 }
 
+export async function getFolderBreadcrumb(folderId: string | null) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || !folderId) return [];
+
+  const { data: folder } = await supabase
+    .from("folders")
+    .select("id,name,path,parent_id")
+    .eq("id", folderId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!folder) return [];
+
+  // Parse the path to build breadcrumb
+  const pathParts = folder.path.split('/').filter(Boolean);
+  const breadcrumb: Array<{ id: string | null; name: string }> = [{ id: null, name: "Mon Drive" }];
+
+  // For each part of the path, we need to find the folder ID
+  let currentPath = "";
+  for (const part of pathParts) {
+    currentPath += "/" + part;
+    const { data: pathFolder } = await supabase
+      .from("folders")
+      .select("id,name")
+      .eq("path", currentPath)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    if (pathFolder) {
+      breadcrumb.push({ id: pathFolder.id, name: pathFolder.name });
+    }
+  }
+
+  return breadcrumb;
+}
+
 export async function uploadMetadata(folderId: string | null, originalName: string, mime: string, size: number) {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -344,6 +381,46 @@ export async function renameFile(id: string, newName: string) {
   if (upErr) throw new Error(upErr.message);
   revalidatePath("/cloud");
   return { id, name: finalName };
+}
+
+export async function setFolderColor(id: string, color: string | null) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Non authentifié");
+  const { error } = await supabase
+    .from("folders")
+    .update({ color })
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/cloud");
+  return { id, color };
+}
+
+export async function trashMultipleFiles(ids: string[]) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Non authentifié");
+  const { error } = await supabase
+    .from("files")
+    .update({ is_trashed: true })
+    .in("id", ids)
+    .eq("user_id", user.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/cloud");
+  return { ids };
+}
+
+export async function trashMultipleFolders(ids: string[]) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Non authentifié");
+  
+  for (const id of ids) {
+    await trashFolder(id);
+  }
+  
+  return { ids };
 }
 
 export async function renameFolder(id: string, newName: string) {

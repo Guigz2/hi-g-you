@@ -40,6 +40,12 @@ export default function Home() {
       href: 'https://sports.eguguillaume.com',
     },
     {
+      title: 'Stamp App',
+      color: 'from-green-400 to-red-500',
+      image: '/icons/homepage/stamp-icon.png',
+      href: 'https://stamp.eguguillaume.com',
+    },
+    {
       title: 'Portfolio',
       color: 'from-teal-500 to-cyan-600',
         image: '/icons/homepage/portfolio-icon.png',

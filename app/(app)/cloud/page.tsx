@@ -1,74 +1,101 @@
 "use client";
-import { useState, Suspense } from "react";
-import CloudTree from "@/components/cloud/CloudTree";
-import FileList from "@/components/cloud/FileList";
+import { useState } from "react";
+import DriveHeader from "@/components/cloud/DriveHeader";
+import DriveSidebar from "@/components/cloud/DriveSidebar";
+import DriveFileList from "@/components/cloud/DriveFileList";
+import DriveDetails from "@/components/cloud/PreviewPane";
 import UploadDropzone from "@/components/cloud/UploadDropzone";
-import PreviewPane from "@/components/cloud/PreviewPane";
-import TagPanel from "@/components/cloud/TagPanel";
 import TrashList from "@/components/cloud/TrashList";
 import SearchPanel from "@/components/cloud/SearchPanel";
+
 export default function CloudPage() {
+  const [currentView, setCurrentView] = useState<"drive" | "shared" | "recent" | "trash">("drive");
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [showTrash, setShowTrash] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleFolderCreated = () => {
+    setRefreshKey(k => k + 1);
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      setCurrentView("drive"); // Switch to drive view for search
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <h1 className="text-xl sm:text-2xl font-bold">Cloud Fichiers</h1>
-      <div className="flex items-center gap-3 flex-wrap">
-        <button
-          onClick={() => { setShowTrash(false); setShowSearch(false); }}
-          className={`text-xs px-2 py-1 rounded border ${(!showTrash && !showSearch) ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'} `}
-        >Fichiers</button>
-        <button
-          onClick={() => { setShowTrash(true); setShowSearch(false); }}
-          className={`text-xs px-2 py-1 rounded border ${showTrash ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'} `}
-        >Corbeille</button>
-        <button
-          onClick={() => { setShowSearch(true); setShowTrash(false); }}
-          className={`text-xs px-2 py-1 rounded border ${showSearch ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300'} `}
-        >Recherche</button>
-      </div>
-      <Suspense fallback={<p>Chargement interface…</p>}>
-        {showTrash ? (
-          <div className="grid gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_300px_250px]">
-            <div className="border rounded p-3 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-neutral-900">
+      {/* Header */}
+      <DriveHeader 
+        viewMode={viewMode} 
+        onViewModeChange={setViewMode}
+        onSearch={handleSearch}
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <DriveSidebar 
+          currentView={currentView}
+          onViewChange={(view) => {
+            setCurrentView(view);
+            setSelectedFile(null);
+          }}
+          currentFolder={currentFolder}
+          onFolderCreated={handleFolderCreated}
+        />
+
+        {/* Content Area */}
+        <main className="flex-1 overflow-auto bg-white dark:bg-neutral-900">
+          {currentView === "trash" ? (
+            <div className="p-6">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
+                Corbeille
+              </h2>
               <TrashList />
             </div>
-            <PreviewPane fileId={selectedFile} />
-            <div className="hidden xl:block border rounded p-3 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
-              <TagPanel fileId={selectedFile} />
+          ) : searchQuery.trim() ? (
+            <div className="p-6">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-6">
+                Résultats pour "{searchQuery}"
+              </h2>
+              <SearchPanel onSelect={setSelectedFile} />
             </div>
-          </div>
-        ) : showSearch ? (
-          <div className="grid gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_300px_250px]">
-            <div className="border rounded p-3 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
-              <SearchPanel onSelect={(fid) => setSelectedFile(fid)} />
-            </div>
-            <PreviewPane fileId={selectedFile} />
-            <div className="hidden xl:block border rounded p-3 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
-              <TagPanel fileId={selectedFile} />
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[250px_1fr_300px] xl:grid-cols-[250px_1fr_300px_250px]">
-            <div className="border rounded p-3 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
-              <CloudTree onSelect={(id) => { setCurrentFolder(id); }} />
-            </div>
-            <div className="space-y-4">
-              <UploadDropzone folderId={currentFolder} onUploaded={() => setRefreshKey(k => k+1)} />
-              <div key={refreshKey} className="border rounded p-3 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
-                <FileList folderId={currentFolder} onSelect={(fileId) => setSelectedFile(fileId)} />
+          ) : (
+            <>
+              {/* Upload Area */}
+              <div className="p-6 border-b border-gray-200 dark:border-neutral-700">
+                <UploadDropzone 
+                  folderId={currentFolder} 
+                  onUploaded={handleFolderCreated}
+                />
               </div>
-            </div>
-            <PreviewPane fileId={selectedFile} />
-            <div className="hidden xl:block border rounded p-3 bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700">
-              <TagPanel fileId={selectedFile} />
-            </div>
-          </div>
+
+              {/* File List */}
+              <div key={refreshKey}>
+                <DriveFileList 
+                  folderId={currentFolder}
+                  viewMode={viewMode}
+                  onSelect={setSelectedFile}
+                  onFolderClick={setCurrentFolder}
+                />
+              </div>
+            </>
+          )}
+        </main>
+
+        {/* Details Panel */}
+        {currentView !== "trash" && (
+          <DriveDetails 
+            fileId={selectedFile}
+            onClose={() => setSelectedFile(null)}
+          />
         )}
-      </Suspense>
+      </div>
     </div>
   );
 }
