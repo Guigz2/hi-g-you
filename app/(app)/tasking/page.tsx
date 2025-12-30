@@ -1,6 +1,6 @@
 "use client";
 import TopBar from "@/components/tasking/TopBar";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import dayjs from "dayjs";
 import "dayjs/locale/fr";
@@ -34,6 +34,14 @@ const COLUMNS: { id: Status; title: string }[] = [
 ];
 
 export default function TaskBoard() {
+  return (
+    <Suspense fallback={<div className="px-4 py-3">Chargement…</div>}>
+      <TaskBoardInner />
+    </Suspense>
+  );
+}
+
+function TaskBoardInner() {
 	const params = useSearchParams();
 	const filters = useMemo(() => ({
 		scope: (params.get("scope") || "perso") as any,
