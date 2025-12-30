@@ -30,7 +30,7 @@ export async function middleware(req: NextRequest) {
   const protectedPrefixes = [
     "/budget",
     "/courses",
-    "/taches",
+    "/tasking",
     "/profile",
     "/cloud",
   ];
