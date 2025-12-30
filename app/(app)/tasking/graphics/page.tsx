@@ -1,13 +1,13 @@
 "use client";
 import TopBarSimple from "@/components/tasking/TopBarSimple";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import dayjs from "dayjs";
 import "dayjs/locale/fr";
 
 type Status = "a_faire" | "en_cours" | "fini";
 type Scope = "perso" | "travail";
-type TaskType = "loisir" | "menage" | "travail";
+type TaskType = "Loisir" | "Entretien du logement" | "Organisation vie perso" | "Sport" | "Travail";
 type Importance = "petite" | "moyenne" | "grande" | "urgente";
 
 type Task = {
@@ -26,6 +26,14 @@ type Task = {
 };
 
 export default function TaskGraphicsPage() {
+  return (
+    <Suspense fallback={<div className="p-6">Chargement…</div>}>
+      <TaskGraphicsInner />
+    </Suspense>
+  );
+}
+
+function TaskGraphicsInner() {
   const params = useSearchParams();
   const filters = useMemo(() => ({
     scope: (params.get("scope") || "perso") as any,
@@ -70,7 +78,13 @@ export default function TaskGraphicsPage() {
   const counts = useMemo(() => {
     const byStatus: Record<Status, number> = { a_faire: 0, en_cours: 0, fini: 0 };
     const byImportance: Record<Importance, number> = { petite: 0, moyenne: 0, grande: 0, urgente: 0 };
-    const byType: Record<TaskType, number> = { loisir: 0, menage: 0, travail: 0 };
+    const byType: Record<TaskType, number> = {
+      "Loisir": 0,
+      "Entretien du logement": 0,
+      "Organisation vie perso": 0,
+      "Sport": 0,
+      "Travail": 0,
+    };
     tasks.forEach(t => {
       byStatus[t.status]++;
       byImportance[t.importance]++;
@@ -149,16 +163,24 @@ export default function TaskGraphicsPage() {
             <div className="text-lg font-semibold mb-3">Par type</div>
             <div className="space-y-3">
               <div>
-                <div className="flex items-center justify-between text-sm mb-1"><span>Loisir</span><span>{counts.byType.loisir}</span></div>
-                <Bar value={counts.byType.loisir} max={tasks.length} color="bg-indigo-400" />
+                <div className="flex items-center justify-between text-sm mb-1"><span>Loisir</span><span>{counts.byType["Loisir"]}</span></div>
+                <Bar value={counts.byType["Loisir"]} max={tasks.length} color="bg-indigo-400" />
               </div>
               <div>
-                <div className="flex items-center justify-between text-sm mb-1"><span>Ménage</span><span>{counts.byType.menage}</span></div>
-                <Bar value={counts.byType.menage} max={tasks.length} color="bg-orange-400" />
+                <div className="flex items-center justify-between text-sm mb-1"><span>Entretien du logement</span><span>{counts.byType["Entretien du logement"]}</span></div>
+                <Bar value={counts.byType["Entretien du logement"]} max={tasks.length} color="bg-orange-400" />
               </div>
               <div>
-                <div className="flex items-center justify-between text-sm mb-1"><span>Travail</span><span>{counts.byType.travail}</span></div>
-                <Bar value={counts.byType.travail} max={tasks.length} color="bg-violet-400" />
+                <div className="flex items-center justify-between text-sm mb-1"><span>Organisation vie perso</span><span>{counts.byType["Organisation vie perso"]}</span></div>
+                <Bar value={counts.byType["Organisation vie perso"]} max={tasks.length} color="bg-cyan-400" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1"><span>Sport</span><span>{counts.byType["Sport"]}</span></div>
+                <Bar value={counts.byType["Sport"]} max={tasks.length} color="bg-green-400" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between text-sm mb-1"><span>Travail</span><span>{counts.byType["Travail"]}</span></div>
+                <Bar value={counts.byType["Travail"]} max={tasks.length} color="bg-violet-400" />
               </div>
             </div>
           </div>
@@ -166,10 +188,10 @@ export default function TaskGraphicsPage() {
 
         <div className="bg-white dark:bg-neutral-900 border dark:border-neutral-800 rounded-xl p-4 mt-4">
           <div className="text-lg font-semibold mb-3">Créations sur 14 jours</div>
-          <div className="w-full overflow-x-auto">
-            <svg width={lastDays.days.length * 36} height={120} className="min-w-full">
+          <div className="w-full overflow-x-hidden">
+            <svg viewBox={`0 0 ${lastDays.days.length * 28} 120`} width="100%" height={120} className="block">
               {lastDays.days.map((d, i) => {
-                const x = i * 36 + 18;
+                const x = i * 28 + 14;
                 const h = Math.round((d.count / Math.max(1, lastDays.max)) * 90);
                 const y = 100 - h;
                 return (

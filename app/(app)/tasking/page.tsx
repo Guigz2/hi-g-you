@@ -7,7 +7,7 @@ import "dayjs/locale/fr";
 
 type Status = "a_faire" | "en_cours" | "fini";
 type Scope = "perso" | "travail";
-type TaskType = "loisir" | "menage" | "travail";
+type TaskType = "Loisir" | "Entretien du logement" | "Organisation vie perso" | "Sport" | "Travail";
 type Importance = "petite" | "moyenne" | "grande" | "urgente";
 type Location = "partout" | "maison" | "travail";
 type Duration = "courte" | "moyenne" | "longue";
@@ -59,7 +59,7 @@ export default function TaskBoard() {
 	const [editTitle, setEditTitle] = useState("");
 	const [editDue, setEditDue] = useState("");
 	const [editNotes, setEditNotes] = useState("");
-	const [editType, setEditType] = useState<TaskType>("loisir");
+	 const [editType, setEditType] = useState<TaskType>("Loisir");
 	const [editImportance, setEditImportance] = useState<Importance>("moyenne");
 	const [editStatus, setEditStatus] = useState<Status>("a_faire");
 	const [editLocation, setEditLocation] = useState<Location>("partout");
@@ -355,11 +355,11 @@ export default function TaskBoard() {
 											<div className="text-gray-600 dark:text-gray-400 text-xs mb-2">Type</div>
 											{editing ? (
 												<div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden divide-x divide-neutral-200 dark:divide-neutral-700">
-													{["loisir","menage","travail"].map((opt) => (
+													{["Loisir","Entretien du logement","Organisation vie perso","Sport","Travail"].map((opt) => (
 														<button key={opt} type="button" onClick={()=>setEditType(opt as TaskType)} aria-pressed={editType===opt}
 															className={`flex-1 px-3 py-2 text-sm text-center transition-colors ${editType===opt?"bg-indigo-500 dark:bg-indigo-600 text-white":"bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 hover:bg-neutral-50 dark:hover:bg-neutral-800"}`}
 														>
-															{opt === "menage" ? "Ménage" : opt.replace(/^./, s=>s.toUpperCase())}
+															{opt}
 														</button>
 													))}
 												</div>

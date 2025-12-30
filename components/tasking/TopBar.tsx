@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Home, ChevronDown, Check } from "lucide-react";
+import { Home, ChevronDown, Check, Menu } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -29,7 +29,7 @@ export default function TopBar() {
 
   const groups = [
     { key: "scope", label: "Périmètre", caption: "", value: current.scope === "perso" ? "Perso" : "Travail", color: "bg-rose-300", options: ["perso","travail"] },
-    { key: "type", label: "Type", caption: "Filtrer par :", value: (current.type as string).toString().replace(/^./, s=>s.toUpperCase()), color: "bg-indigo-300", options: ["tous","loisir","menage","travail"] },
+    { key: "type", label: "Type", caption: "Filtrer par :", value: (current.type as string), color: "bg-indigo-300", options: ["tous","Loisir","Entretien du logement","Organisation vie perso","Sport","Travail"] },
     { key: "importance", label: "Importance", caption: "", value: (current.importance as string).replace(/^./, s=>s.toUpperCase()), color: "bg-cyan-300", options: ["tous","petite","moyenne","grande","urgente"] },
     { key: "status", label: "Etat", caption: "", value: (current.status as string).replace(/^./, s=>s.toUpperCase()), color: "bg-green-300", options: ["tous","a_faire","en_cours","fini"] },
     { key: "location", label: "Lieu", caption: "", value: (current.location as string).replace(/^./, s=>s.toUpperCase()), color: "bg-orange-300", options: ["tous","partout","maison","travail"] },
@@ -37,6 +37,7 @@ export default function TopBar() {
   ] as const;
 
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,10 +59,18 @@ export default function TopBar() {
   return (
     <div className="sticky top-0 z-20 bg-white dark:bg-neutral-900 border-b dark:border-neutral-800" ref={containerRef}>
       <div className="flex items-center">
-        <Link href="/" className="w-16 h-16 flex items-center justify-center">
+        <button
+          type="button"
+          className="md:hidden w-16 h-16 flex items-center justify-center"
+          onClick={() => window.dispatchEvent(new CustomEvent("toggle-sidebar"))}
+          aria-label="Ouvrir le menu"
+        >
+          <Menu className="w-8 h-8" />
+        </button>
+        <Link href="/" className="hidden md:flex w-16 h-16 items-center justify-center">
           <Home className="w-10 h-10" />
         </Link>
-        <div className="flex-1 flex items-start">
+        <div className="flex-1 hidden md:flex items-start">
           {groups.map((g, i) => (
             <div key={g.label} className={`px-4 border-l dark:border-neutral-800`}>
               <div className="text-center text-xs text-gray-700 dark:text-gray-300 mb-1">{g.label}</div>
@@ -82,7 +91,7 @@ export default function TopBar() {
                       <ul role="listbox" className="max-h-64 overflow-auto py-1">
                         {g.options.map((opt) => {
                           const selected = String(params.get(g.key) ?? (g.key === "scope" ? "perso" : "tous")) === opt;
-                          const label = opt.replace(/^./, s=>s.toUpperCase());
+                          const label = opt;
                           return (
                             <li
                               key={opt}
@@ -104,7 +113,46 @@ export default function TopBar() {
             </div>
           ))}
         </div>
+        <div className="ml-auto md:hidden pr-4">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen(v => !v)}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-xl border border-neutral-200 dark:border-neutral-700 text-sm text-gray-700 dark:text-gray-200"
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="mobile-filters"
+          >
+            <Menu className="w-4 h-4" />
+            Filtres
+          </button>
+        </div>
       </div>
+      {mobileFiltersOpen && (
+        <div id="mobile-filters" className="md:hidden border-t dark:border-neutral-800 bg-white dark:bg-neutral-900">
+          <div className="px-4 py-3 space-y-3">
+            {groups.map((g) => (
+              <div key={g.key}>
+                <div className="text-xs text-gray-700 dark:text-gray-300 mb-1">{g.label}</div>
+                <div className="flex flex-wrap gap-2">
+                  {g.options.map((opt) => {
+                    const selected = String(params.get(g.key) ?? (g.key === "scope" ? "perso" : "tous")) === opt;
+                    const label = opt;
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => { setParam(g.key, opt); }}
+                        className={`px-3 py-1 rounded-md border text-sm ${selected ? "bg-indigo-600 text-white border-indigo-600" : "border-neutral-200 dark:border-neutral-700 text-gray-700 dark:text-gray-200"}`}
+                      >
+                        {g.key === "scope" ? (opt === "perso" ? "Perso" : "Travail") : label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

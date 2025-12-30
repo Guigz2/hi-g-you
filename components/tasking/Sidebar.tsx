@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 import updateLocale from "dayjs/plugin/updateLocale";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import "dayjs/locale/fr";
-import { Ticket, List, Table, PieChart } from "lucide-react";
+import { Ticket, List, Table, PieChart, Home } from "lucide-react";
 import { Press_Start_2P } from "next/font/google";
 
 dayjs.extend(updateLocale);
@@ -21,6 +21,7 @@ function NavItem({ href, label, icon: Icon }: { href: string; label: string; ico
   return (
     <Link
       href={href}
+      onClick={() => { try { window.dispatchEvent(new CustomEvent("close-sidebar")); } catch {} }}
       className={`${active ? "bg-indigo-100 dark:bg-indigo-900/30" : ""} flex items-center gap-3 px-4 py-1 rounded-md hover:bg-indigo-50 dark:hover:bg-neutral-800 transition-colors`}
     >
       <Icon className="w-8 h-8 text-gray-700 dark:text-gray-300" />
@@ -93,6 +94,18 @@ export default function Sidebar() {
       </div>
 
       <div className="mx-4 border-t border-black dark:border-white" />
+
+      {/* Mobile-only home link */}
+      <div className="md:hidden px-4 pt-3">
+        <Link
+          href="/"
+          onClick={() => { try { window.dispatchEvent(new CustomEvent("close-sidebar")); } catch {} }}
+          className="flex items-center gap-3 px-3 py-2 rounded-md border border-neutral-200 dark:border-neutral-700 bg-gradient-to-r from-pink-400 to-purple-600 transition-colors"
+        >
+          <Home className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          <span className="text-sm">Accueil</span>
+        </Link>
+      </div>
 
       <nav className="mt-2 px-4 space-y-2">
         <NavItem href="/tasking/create" label="Faire un ticket" icon={Ticket} />

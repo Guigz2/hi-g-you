@@ -1,21 +1,29 @@
 "use client";
 import TopBarSimple from "@/components/tasking/TopBarSimple";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 
 type Scope = "perso" | "travail";
-type TaskType = "loisir" | "menage" | "travail";
+type TaskType = "Loisir" | "Entretien du logement" | "Organisation vie perso" | "Sport" | "Travail";
 type Importance = "petite" | "moyenne" | "grande" | "urgente";
 type Status = "a_faire" | "en_cours" | "fini";
 type Location = "partout" | "maison" | "travail";
 type Duration = "courte" | "moyenne" | "longue";
 
 export default function CreateTicket() {
+  return (
+    <Suspense fallback={<div className="p-6">Chargement…</div>}>
+      <CreateTicketInner />
+    </Suspense>
+  );
+}
+
+function CreateTicketInner() {
   const router = useRouter();
   const params = useSearchParams();
   const defaults = useMemo(() => ({
     scope: (params.get("scope") || "perso") as Scope,
-    type: (params.get("type") || "tous").replace(/^tous$/, "loisir") as TaskType,
+    type: (params.get("type") || "tous").replace(/^tous$/, "Loisir") as TaskType,
     importance: (params.get("importance") || "moyenne") as Importance,
     // Toujours créer en "À faire" par défaut
     status: "a_faire" as Status,
@@ -76,7 +84,7 @@ export default function CreateTicket() {
           <div className="md:col-span-2">
             <div className="text-gray-700 dark:text-gray-300 mb-2">Périmètre</div>
             <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden divide-x divide-neutral-200 dark:divide-neutral-700">
-              {(["perso","travail"] as Scope[]).map((opt) => (
+              {( ["perso","travail"] as Scope[]).map((opt) => (
                 <button
                   key={opt}
                   type="button"
@@ -93,7 +101,7 @@ export default function CreateTicket() {
           <div className="md:col-span-2">
             <div className="text-gray-700 dark:text-gray-300 mb-2">Type</div>
             <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden divide-x divide-neutral-200 dark:divide-neutral-700">
-              {(["loisir","menage","travail"] as TaskType[]).map((opt) => (
+              {( ["Loisir","Entretien du logement","Organisation vie perso","Sport","Travail"] as TaskType[]).map((opt) => (
                 <button
                   key={opt}
                   type="button"
@@ -102,7 +110,7 @@ export default function CreateTicket() {
                   className={`flex-1 px-3 py-2 text-sm text-center transition-colors
                     ${type === opt ? "bg-indigo-500 dark:bg-indigo-600 text-white" : "bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 hover:bg-neutral-50 dark:hover:bg-neutral-800"}`}
                 >
-                  {opt === "menage" ? "Ménage" : opt.replace(/^./, s=>s.toUpperCase())}
+                  {opt}
                 </button>
               ))}
             </div>
@@ -110,7 +118,7 @@ export default function CreateTicket() {
           <div className="md:col-span-2">
             <div className="text-gray-700 dark:text-gray-300 mb-2">Importance</div>
             <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden divide-x divide-neutral-200 dark:divide-neutral-700">
-              {(["petite","moyenne","grande","urgente"] as Importance[]).map((opt) => (
+              {( ["petite","moyenne","grande","urgente"] as Importance[]).map((opt) => (
                 <button
                   key={opt}
                   type="button"
@@ -127,7 +135,7 @@ export default function CreateTicket() {
           <div className="md:col-span-2">
             <div className="text-gray-700 dark:text-gray-300 mb-2">État</div>
             <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden divide-x divide-neutral-200 dark:divide-neutral-700">
-              {(["a_faire","en_cours","fini"] as Status[]).map((opt) => (
+              {( ["a_faire","en_cours","fini"] as Status[]).map((opt) => (
                 <button
                   key={opt}
                   type="button"
@@ -144,7 +152,7 @@ export default function CreateTicket() {
           <div className="md:col-span-2">
             <div className="text-gray-700 dark:text-gray-300 mb-2">Lieu</div>
             <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden divide-x divide-neutral-200 dark:divide-neutral-700">
-              {(["partout","maison","travail"] as Location[]).map((opt) => (
+              {( ["partout","maison","travail"] as Location[]).map((opt) => (
                 <button
                   key={opt}
                   type="button"
@@ -161,7 +169,7 @@ export default function CreateTicket() {
           <div className="md:col-span-2">
             <div className="text-gray-700 dark:text-gray-300 mb-2">Durée estimée</div>
             <div className="flex rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden divide-x divide-neutral-200 dark:divide-neutral-700">
-              {(["courte","moyenne","longue"] as Duration[]).map((opt) => (
+              {( ["courte","moyenne","longue"] as Duration[]).map((opt) => (
                 <button
                   key={opt}
                   type="button"

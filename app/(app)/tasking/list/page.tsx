@@ -7,8 +7,8 @@ import "dayjs/locale/fr";
 
 type Status = "a_faire" | "en_cours" | "fini";
 type Scope = "perso" | "travail";
-type TaskType = "loisir" | "menage" | "travail";
-type Importance = "petite" | "moyenne" | "grande" | "urgente";
+type TaskType = "Loisir" | "Entretien du logement" | "Organisation vie perso" | "Sport" | "Travail";
+type Importance = "petite" | "moyenne" | "grande" | "urgente"   ;
 type Location = "partout" | "maison" | "travail";
 type Duration = "courte" | "moyenne" | "longue";
 
@@ -61,11 +61,31 @@ export default function TaskList() {
   const [editTitle, setEditTitle] = useState("");
   const [editDue, setEditDue] = useState("");
   const [editNotes, setEditNotes] = useState("");
-  const [editType, setEditType] = useState<TaskType>("loisir");
+  const [editType, setEditType] = useState<TaskType>("Loisir");
   const [editImportance, setEditImportance] = useState<Importance>("moyenne");
   const [editStatus, setEditStatus] = useState<Status>("a_faire");
   const [editLocation, setEditLocation] = useState<Location>("partout");
   const [editDuration, setEditDuration] = useState<Duration>("courte");
+  const [useOptimalSort, setUseOptimalSort] = useState(false);
+
+  const TYPE_ORDER: Record<TaskType, number> = {
+    "Travail": 0,
+    "Entretien du logement": 1,
+    "Organisation vie perso": 2,
+    "Sport": 3,
+    "Loisir": 4,
+  };
+  const IMPORTANCE_ORDER: Record<Importance, number> = {
+    urgente: 0,
+    grande: 1,
+    moyenne: 2,
+    petite: 3,
+  };
+  const DURATION_ORDER: Record<Duration, number> = {
+    courte: 0,
+    moyenne: 1,
+    longue: 2,
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -96,6 +116,24 @@ export default function TaskList() {
 
   const sorted = useMemo(() => {
     const arr = [...tasks];
+    if (useOptimalSort) {
+      arr.sort((a, b) => {
+        const dueA = a.due_date ? dayjs(a.due_date).valueOf() : Number.MAX_SAFE_INTEGER;
+        const dueB = b.due_date ? dayjs(b.due_date).valueOf() : Number.MAX_SAFE_INTEGER;
+        if (dueA !== dueB) return dueA - dueB;
+        const impA = IMPORTANCE_ORDER[a.importance];
+        const impB = IMPORTANCE_ORDER[b.importance];
+        if (impA !== impB) return impA - impB;
+        const typeA = TYPE_ORDER[a.type];
+        const typeB = TYPE_ORDER[b.type];
+        if (typeA !== typeB) return typeA - typeB;
+        const durA = DURATION_ORDER[a.duration];
+        const durB = DURATION_ORDER[b.duration];
+        if (durA !== durB) return durA - durB;
+        return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
+      });
+      return arr;
+    }
     arr.sort((a, b) => {
       const dir = sortDir === "asc" ? 1 : -1;
       const getVal = (t: Task) => {
@@ -114,11 +152,10 @@ export default function TaskList() {
       const vb = getVal(b);
       if (va < vb) return -1 * dir;
       if (va > vb) return 1 * dir;
-      // tie-breaker by created_at desc
       return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
     });
     return arr;
-  }, [tasks, sortKey, sortDir]);
+  }, [tasks, sortKey, sortDir, useOptimalSort]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -209,7 +246,16 @@ export default function TaskList() {
       <div className="px-6">
         <div className="flex items-center justify-between mt-4 mb-3">
           <div className="text-2xl font-semibold">Liste des tâches</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">{sorted.length} tâche(s)</div>
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-600 dark:text-gray-400">{sorted.length} tâche(s)</div>
+            <button
+              onClick={() => setUseOptimalSort(v => !v)}
+              className={`px-3 py-1.5 rounded-md border text-sm ${useOptimalSort ? "bg-indigo-600 text-white border-indigo-600" : "border-neutral-200 dark:border-neutral-700 text-gray-700 dark:text-gray-200"}`}
+              title={useOptimalSort ? "Désactiver le tri optimal" : "Activer le tri optimal"}
+            >
+              {useOptimalSort ? "Tri optimal activé" : "Tri optimal"}
+            </button>
+          </div>
         </div>
         {error && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200 px-3 py-2 text-sm mb-3">
@@ -217,7 +263,7 @@ export default function TaskList() {
           </div>
         )}
         <div className="bg-white dark:bg-neutral-900 border dark:border-neutral-800 rounded-xl overflow-hidden">
-          <div className="grid" style={{ gridTemplateColumns: gridColsWithActions }}>
+          <div className="hidden md:grid" style={{ gridTemplateColumns: gridColsWithActions }}>
                 {HEADERS.map((h, i) => (
                   <button
                     key={h.key}
@@ -239,8 +285,9 @@ export default function TaskList() {
                 <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Chargement…</div>
               )}
 
+              {/* Desktop rows */}
               {!loading && sorted.map((t, r) => (
-                <div key={t.id} className={`grid border-t dark:border-neutral-800 items-center ${r % 2 === 0 ? "bg-gray-50 dark:bg-neutral-800/50" : ""}`} style={{ gridTemplateColumns: gridColsWithActions }}>
+                <div key={t.id} className={`hidden md:grid border-t dark:border-neutral-800 items-center ${r % 2 === 0 ? "bg-gray-50 dark:bg-neutral-800/50" : ""}`} style={{ gridTemplateColumns: gridColsWithActions }}>
                   <div className="px-4 border-r border-neutral-200 dark:border-neutral-800 self-stretch" title={t.title}>
                     <div className="py-2 text-sm text-gray-900 dark:text-gray-100 truncate flex items-center">
                       {editRowId === t.id ? (
@@ -252,11 +299,13 @@ export default function TaskList() {
                     <div className="py-2 text-sm text-gray-700 dark:text-gray-300 truncate flex items-center">
                       {editRowId === t.id ? (
                         <select value={editType} onChange={(e)=>setEditType(e.target.value as TaskType)} className="h-8 w-full rounded border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 text-gray-900 dark:text-gray-100 text-sm">
-                          <option value="loisir">Loisir</option>
-                          <option value="menage">Ménage</option>
-                          <option value="travail">Travail</option>
+                          <option value="Loisir">Loisir</option>
+                          <option value="Entretien du logement">Entretien du logement</option>
+                          <option value="Organisation vie perso">Organisation vie perso</option>
+                          <option value="Sport">Sport</option>
+                          <option value="Travail">Travail</option>
                         </select>
-                      ) : (t.type === "menage" ? "Ménage" : t.type.replace(/^./, s=>s.toUpperCase()))}
+                      ) : t.type}
                     </div>
                   </div>
                   <div className="px-4 border-r border-neutral-200 dark:border-neutral-800 self-stretch">
@@ -325,6 +374,117 @@ export default function TaskList() {
                   </div>
                 </div>
               ))}
+
+              {/* Mobile cards */}
+              {!loading && (
+                <div className="md:hidden divide-y divide-neutral-200 dark:divide-neutral-800">
+                  {sorted.map((t) => (
+                    <div key={t.id} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          {editRowId === t.id ? (
+                            <input value={editTitle} onChange={(e)=>setEditTitle(e.target.value)} className="h-9 w-full rounded border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 text-gray-900 dark:text-gray-100 text-sm" />
+                          ) : (
+                            <div className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate" title={t.title}>{t.title}</div>
+                          )}
+                          <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                            {editRowId === t.id ? (
+                              <input type="date" value={editDue} onChange={(e)=>setEditDue(e.target.value)} className="h-8 w-full rounded border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 text-gray-900 dark:text-gray-100 text-sm" />
+                            ) : (
+                              t.due_date ? dayjs(t.due_date).locale("fr").format("DD/MM/YYYY") : "—"
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {rowError && editRowId === t.id && (
+                            <div className="mb-2 text-amber-700 dark:text-amber-300 text-xs">{rowError}</div>
+                          )}
+                          {editRowId === t.id ? (
+                            <div className="flex flex-wrap items-center gap-2 justify-end">
+                              <button onClick={saveEdit} disabled={actionLoadingId === t.id || !editTitle.trim()} className="px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 dark:hover:bg-indigo-500 text-white text-sm disabled:opacity-60">Enregistrer</button>
+                              <button onClick={cancelEdit} disabled={actionLoadingId === t.id} className="px-3 py-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-neutral-100 dark:hover:bg-neutral-800">Annuler</button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-center gap-2 justify-end">
+                              <button onClick={() => beginEdit(t)} className="px-3 py-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-neutral-100 dark:hover:bg-neutral-800">Modifier</button>
+                              <button onClick={() => deleteTask(t.id)} disabled={actionLoadingId === t.id} className="px-3 py-1.5 rounded-md border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30">Supprimer</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">Type</div>
+                          {editRowId === t.id ? (
+                            <select value={editType} onChange={(e)=>setEditType(e.target.value as TaskType)} className="mt-1 h-8 w-full rounded border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 text-gray-900 dark:text-gray-100 text-sm">
+                                  <option value="Loisir">Loisir</option>
+                                  <option value="Entretien du logement">Entretien du logement</option>
+                                  <option value="Organisation vie perso">Organisation vie perso</option>
+                                  <option value="Sport">Sport</option>
+                                  <option value="Travail">Travail</option>
+                            </select>
+                          ) : (
+                            <div className="mt-1 inline-block rounded bg-indigo-200/60 dark:bg-indigo-900/40 px-2 py-1 text-xs text-black dark:text-white">
+                              {t.type}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">Importance</div>
+                          {editRowId === t.id ? (
+                            <select value={editImportance} onChange={(e)=>setEditImportance(e.target.value as Importance)} className="mt-1 h-8 w-full rounded border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 text-gray-900 dark:text-gray-100 text-sm">
+                              <option value="petite">Petite</option>
+                              <option value="moyenne">Moyenne</option>
+                              <option value="grande">Grande</option>
+                              <option value="urgente">Urgente</option>
+                            </select>
+                          ) : (
+                            <div className="mt-1 inline-block rounded bg-cyan-200/60 dark:bg-cyan-900/40 px-2 py-1 text-xs text-black dark:text-white">
+                              {t.importance.replace(/^./, s=>s.toUpperCase())}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">Lieu</div>
+                          {editRowId === t.id ? (
+                            <select value={editLocation} onChange={(e)=>setEditLocation(e.target.value as Location)} className="mt-1 h-8 w-full rounded border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 text-gray-900 dark:text-gray-100 text-sm">
+                              <option value="partout">Partout</option>
+                              <option value="maison">Maison</option>
+                              <option value="travail">Travail</option>
+                            </select>
+                          ) : (
+                            <div className="mt-1 inline-block rounded bg-orange-200/60 dark:bg-orange-900/40 px-2 py-1 text-xs text-black dark:text-white">
+                              {t.location.replace(/^./, s=>s.toUpperCase())}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">Durée</div>
+                          {editRowId === t.id ? (
+                            <select value={editDuration} onChange={(e)=>setEditDuration(e.target.value as Duration)} className="mt-1 h-8 w-full rounded border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 text-gray-900 dark:text-gray-100 text-sm">
+                              <option value="courte">Courte</option>
+                              <option value="moyenne">Moyenne</option>
+                              <option value="longue">Longue</option>
+                            </select>
+                          ) : (
+                            <div className="mt-1 inline-block rounded bg-violet-200/60 dark:bg-violet-900/40 px-2 py-1 text-xs text-black dark:text-white">
+                              {t.duration.replace(/^./, s=>s.toUpperCase())}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Notes</div>
+                        {editRowId === t.id ? (
+                          <textarea value={editNotes} onChange={(e)=>setEditNotes(e.target.value)} rows={3} className="w-full rounded border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 text-gray-900 dark:text-gray-100 text-sm" />
+                        ) : (
+                          <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words max-h-24 overflow-auto">{t.notes || ""}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
         </div>
       </div>
     </div>

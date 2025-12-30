@@ -67,6 +67,7 @@ export async function PATCH(req: Request) {
     for (const k of allowedKeys) {
       if (k in body && body[k] !== undefined) update[k] = body[k];
     }
+    // type is already a new label; DB constraint must be migrated before removing mapping
     if (Object.keys(update).length === 0) return NextResponse.json({ error: "Aucune donnée à mettre à jour" }, { status: 400 });
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
       user_id: user.id,
       title: String(body.title || "").trim(),
       scope: String(body.scope || "perso"),
-      type: String(body.type || "tous").replace(/^tous$/, "loisir"),
+      type: String(body.type || "tous").replace(/^tous$/, "Loisir"),
       importance: String(body.importance || "moyenne"),
       status: String(body.status || "a_faire"),
       location: String(body.location || "partout"),

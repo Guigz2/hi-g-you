@@ -2,7 +2,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type Scope = "perso" | "travail";
-export type TaskType = "loisir" | "menage" | "travail";
+export type TaskType = "Loisir" | "Entretien du logement" | "Organisation vie perso" | "Sport" | "Travail";
 export type Importance = "petite" | "moyenne" | "grande" | "urgente";
 export type Status = "a_faire" | "en_cours" | "fini";
 export type Location = "partout" | "maison" | "travail";
@@ -105,28 +105,3 @@ export async function statsByImportance(filters: TaskFilters) {
   }
   return groups;
 }
-
-// SQL helper for Supabase (documentation)
-export const TASKS_SQL = `
-create table if not exists public.tasks (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  title text not null,
-  scope text not null check (scope in ('perso','travail')),
-  type text not null check (type in ('loisir','menage','travail')),
-  importance text not null check (importance in ('petite','moyenne','grande','urgente')),
-  status text not null check (status in ('a_faire','en_cours','fini')),
-  location text not null check (location in ('partout','maison','travail')),
-  duration text not null check (duration in ('courte','moyenne','longue')),
-  due_date date,
-  notes text,
-  created_at timestamptz not null default now()
-);
-
-alter table public.tasks enable row level security;
-
-create policy "Tasks are viewable by owner" on public.tasks for select using (auth.uid() = user_id);
-create policy "Tasks are insertable by owner" on public.tasks for insert with check (auth.uid() = user_id);
-create policy "Tasks are updatable by owner" on public.tasks for update using (auth.uid() = user_id);
-create policy "Tasks are deletable by owner" on public.tasks for delete using (auth.uid() = user_id);
-`;
