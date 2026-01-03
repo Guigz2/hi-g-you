@@ -15,6 +15,7 @@ export default function CloudPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
 
   const handleFolderCreated = () => {
     setRefreshKey(k => k + 1);
@@ -93,9 +94,29 @@ export default function CloudPage() {
           <DriveDetails 
             fileId={selectedFile}
             onClose={() => setSelectedFile(null)}
+            onExpand={() => setIsPreviewExpanded(true)}
           />
         )}
       </div>
+
+      {/* Expanded Preview Modal */}
+      {isPreviewExpanded && selectedFile && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-8"
+          onClick={() => setIsPreviewExpanded(false)}
+        >
+          <div 
+            className="bg-white dark:bg-neutral-900 rounded-lg shadow-2xl w-full h-full max-w-7xl overflow-hidden flex"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DriveDetails 
+              fileId={selectedFile}
+              onClose={() => setIsPreviewExpanded(false)}
+              isExpanded={true}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

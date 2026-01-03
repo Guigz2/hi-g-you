@@ -36,6 +36,7 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [selectedType, setSelectedType] = useState<"files" | "folders" | "mixed">("files");
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [lastClickTime, setLastClickTime] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
     const load = async () => {
@@ -265,6 +266,26 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
     }
   };
 
+  const handleFolderClick = (folderId: string) => {
+    const now = Date.now();
+    const lastClick = lastClickTime[folderId] || 0;
+    const timeDiff = now - lastClick;
+
+    if (timeDiff < 300 && lastClick > 0) {
+      // Double-clic : ouvrir le dossier
+      clearSelection();
+      onFolderClick?.(folderId);
+      // Réinitialiser le timer pour ce dossier
+      const newTimes = { ...lastClickTime };
+      delete newTimes[folderId];
+      setLastClickTime(newTimes);
+    } else {
+      // Simple clic : sélectionner ou désélectionner
+      toggleSelection(folderId, "folder");
+      setLastClickTime({ ...lastClickTime, [folderId]: now });
+    }
+  };
+
   const folderColors = [
     { name: "Aucune", value: null },
     { name: "Rouge", value: "#ef4444" },
@@ -298,7 +319,10 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
             {breadcrumb.map((crumb, index) => (
               <div key={crumb.id || "root"} className="flex items-center gap-2">
                 <button
-                  onClick={() => onFolderClick?.(crumb.id!)}
+                  onClick={() => {
+                    clearSelection();
+                    onFolderClick?.(crumb.id!);
+                  }}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline"
                 >
                   {crumb.name}
@@ -311,91 +335,91 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
           </div>
         )}
 
-        {/* Action Bar */}
-        {selectedItems.size > 0 && (
-          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                {selectedItems.size} élément(s) sélectionné(s)
-              </span>
-              <button
-                onClick={clearSelection}
-                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-                aria-label="Désélectionner tout"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              {selectedItems.size === 1 && (
+        {/* Action Bar Container - Always takes up space */}
+        <div className="mb-4 min-h-[72px]">
+          {selectedItems.size > 0 && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={handleSingleRename}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded text-sm transition-colors"
-                  title="Renommer"
+                  onClick={clearSelection}
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                  aria-label="Désélectionner tout"
                 >
-                  <Edit2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Renommer</span>
+                  <X className="w-4 h-4" />
                 </button>
-              )}
-              {selectedType === "files" && (
-                <button
-                  onClick={handleBatchDownload}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded text-sm transition-colors"
-                  title="Télécharger"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden sm:inline">Télécharger</span>
-                </button>
-              )}
-              <button
-                onClick={handleBatchMove}
-                className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded text-sm transition-colors"
-                title="Déplacer"
-              >
-                <Move className="w-4 h-4" />
-                <span className="hidden sm:inline">Déplacer</span>
-              </button>
-              {(selectedType === "folders" || selectedType === "mixed") && (
-                <div className="relative">
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  {selectedItems.size} sélectionné(s)
+                </span>
+                {selectedItems.size === 1 && (
                   <button
-                    onClick={() => setShowColorPicker(!showColorPicker)}
+                    onClick={handleSingleRename}
                     className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded text-sm transition-colors"
-                    title="Colorer"
+                    title="Renommer"
                   >
-                    <Palette className="w-4 h-4" />
-                    <span className="hidden sm:inline">Colorer</span>
+                    <Edit2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Renommer</span>
                   </button>
-                  {showColorPicker && (
-                    <div className="absolute top-full mt-2 right-0 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-lg p-3 z-50 min-w-[180px]">
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Choisir une couleur</p>
-                      <div className="grid grid-cols-4 gap-2">
-                        {folderColors.map((color) => (
-                          <button
-                            key={color.name}
-                            onClick={() => handleBatchColor(color.value)}
-                            className="w-8 h-8 rounded border-2 border-gray-300 dark:border-neutral-600 hover:scale-110 transition-transform flex items-center justify-center"
-                            style={{ backgroundColor: color.value || "#e5e7eb" }}
-                            title={color.name}
-                          >
-                            {!color.value && <span className="text-xs text-gray-500">∅</span>}
-                          </button>
-                        ))}
+                )}
+                {selectedType === "files" && (
+                  <button
+                    onClick={handleBatchDownload}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded text-sm transition-colors"
+                    title="Télécharger"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden sm:inline">Télécharger</span>
+                  </button>
+                )}
+                <button
+                  onClick={handleBatchMove}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded text-sm transition-colors"
+                  title="Déplacer"
+                >
+                  <Move className="w-4 h-4" />
+                  <span className="hidden sm:inline">Déplacer</span>
+                </button>
+                {(selectedType === "folders" || selectedType === "mixed") && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowColorPicker(!showColorPicker)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded text-sm transition-colors"
+                      title="Colorer"
+                    >
+                      <Palette className="w-4 h-4" />
+                      <span className="hidden sm:inline">Colorer</span>
+                    </button>
+                    {showColorPicker && (
+                      <div className="absolute top-full mt-2 right-0 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-lg p-3 z-50 min-w-[180px]">
+                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Choisir une couleur</p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {folderColors.map((color) => (
+                            <button
+                              key={color.name}
+                              onClick={() => handleBatchColor(color.value)}
+                              className="w-8 h-8 rounded border-2 border-gray-300 dark:border-neutral-600 hover:scale-110 transition-transform flex items-center justify-center"
+                              style={{ backgroundColor: color.value || "#e5e7eb" }}
+                              title={color.name}
+                            >
+                              {!color.value && <span className="text-xs text-gray-500">∅</span>}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              <button
-                onClick={handleBatchDelete}
-                className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
-                title="Supprimer"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Supprimer</span>
-              </button>
+                    )}
+                  </div>
+                )}
+                <button
+                  onClick={handleBatchDelete}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
+                  title="Supprimer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Supprimer</span>
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {folders.length > 0 && (
           <div className="mb-6">
@@ -420,7 +444,7 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
                     className="absolute top-2 left-2 w-4 h-4 cursor-pointer"
                   />
                   <button
-                    onClick={() => !selectedItems.has(folder.id) && onFolderClick?.(folder.id)}
+                    onClick={() => handleFolderClick(folder.id)}
                     className="flex flex-col items-center w-full"
                   >
                     <Folder 
@@ -468,7 +492,10 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
                       />
                       <div 
                         className="flex flex-col items-center"
-                        onClick={() => !selectedItems.has(file.id) && onSelect?.(file.id)}
+                        onClick={() => {
+                          clearSelection();
+                          onSelect?.(file.id);
+                        }}
                       >
                         <div className="w-12 h-12 mb-2 flex items-center justify-center">
                           {getFileIcon(file.mime, file.ext)}
@@ -562,23 +589,12 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
         </div>
       )}
 
-      {/* Action Bar (same as grid view) */}
-      {selectedItems.size > 0 && (
-        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
-              {selectedItems.size} élément(s) sélectionné(s)
-            </span>
-            <button
-              onClick={clearSelection}
-              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-              aria-label="Désélectionner tout"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            {selectedItems.size === 1 && (
+      {/* Action Bar Container - Always takes up space */}
+      <div className="mb-4 min-h-[72px]">
+        {selectedItems.size > 0 && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {selectedItems.size === 1 && (
               <button
                 onClick={handleSingleRename}
                 className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-800 hover:bg-gray-100 dark:hover:bg-neutral-700 border border-gray-300 dark:border-neutral-600 rounded text-sm transition-colors"
@@ -645,8 +661,21 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
               <span className="hidden sm:inline">Supprimer</span>
             </button>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              {selectedItems.size} élément(s) sélectionné(s)
+            </span>
+            <button
+              onClick={clearSelection}
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+              aria-label="Désélectionner tout"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      )}
+        )}
+      </div>
 
       <table className="w-full">
         <thead>
@@ -679,7 +708,7 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
                   className="w-4 h-4 cursor-pointer"
                 />
               </td>
-              <td className="py-3" onClick={() => !selectedItems.has(folder.id) && onFolderClick?.(folder.id)}>
+              <td className="py-3" onClick={() => handleFolderClick(folder.id)}>
                 <div className="flex items-center gap-3">
                   <Folder 
                     className="w-5 h-5" 
@@ -714,7 +743,10 @@ export default function DriveFileList({ folderId, onSelect, viewMode, onFolderCl
                   className="w-4 h-4 cursor-pointer"
                 />
               </td>
-              <td className="py-3" onClick={() => !selectedItems.has(file.id) && onSelect?.(file.id)}>
+              <td className="py-3" onClick={() => {
+                clearSelection();
+                onSelect?.(file.id);
+              }}>
                 <div className="flex items-center gap-3">
                   {getFileIcon(file.mime, file.ext)}
                   <span className="text-sm text-gray-700 dark:text-gray-300">{file.name}</span>

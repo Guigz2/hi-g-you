@@ -3,16 +3,18 @@ import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { STORAGE_BUCKET } from "@/lib/storage/config";
 import { getFileMeta } from "@/app/(app)/cloud/actions";
-import { FileText, Image, Film, Music, File, X, Download, ExternalLink, Info } from "lucide-react";
+import { FileText, Image, Film, Music, File, X, Download, ExternalLink, Info, Maximize2 } from "lucide-react";
 
 interface FileMeta { id: string; name: string; mime: string; size: number; storage_path: string; }
 
 interface DriveDetailsProps {
   fileId: string | null;
   onClose?: () => void;
+  onExpand?: () => void;
+  isExpanded?: boolean;
 }
 
-export default function DriveDetails({ fileId, onClose }: DriveDetailsProps) {
+export default function DriveDetails({ fileId, onClose, onExpand, isExpanded = false }: DriveDetailsProps) {
   const [file, setFile] = useState<FileMeta | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,19 +85,35 @@ export default function DriveDetails({ fileId, onClose }: DriveDetailsProps) {
   }
 
   return (
-    <aside className="w-80 border-l border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 flex flex-col">
+    <aside className={`${
+      isExpanded 
+        ? "w-full h-full flex flex-col"
+        : "w-80 border-l border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 flex flex-col"
+    }`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-neutral-700">
         <h2 className="font-semibold text-gray-900 dark:text-gray-100">Détails</h2>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-            aria-label="Fermer"
-          >
-            <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onExpand && fileId && !isExpanded && (
+            <button
+              onClick={onExpand}
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+              aria-label="Agrandir"
+              title="Agrandir l'aperçu"
+            >
+              <Maximize2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -109,7 +127,11 @@ export default function DriveDetails({ fileId, onClose }: DriveDetailsProps) {
       ) : file ? (
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Preview */}
-          <div className="aspect-square bg-gray-100 dark:bg-neutral-800 rounded-lg flex items-center justify-center overflow-hidden">
+          <div className={`${
+            isExpanded 
+              ? "h-[calc(100vh-200px)]" 
+              : "aspect-square"
+          } bg-gray-100 dark:bg-neutral-800 rounded-lg flex items-center justify-center overflow-hidden`}>
             {file.mime.startsWith("image/") && previewUrl ? (
               <img src={previewUrl} alt={file.name} className="w-full h-full object-contain" />
             ) : file.mime === "application/pdf" && previewUrl ? (
