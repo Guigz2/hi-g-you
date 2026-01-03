@@ -25,6 +25,8 @@ type Task = {
   due_date: string | null;
   notes: string | null;
   created_at: string;
+  parent_id?: string | null;
+  order_index?: number;
 };
 
 const HEADERS = [
@@ -56,6 +58,7 @@ function TaskListInner() {
     status: (params.get("status") || "tous") as any,
     location: (params.get("location") || "tous") as any,
     duration: (params.get("duration") || "tous") as any,
+    old_only: params.has("old_only"),
   }), [params]);
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -75,6 +78,7 @@ function TaskListInner() {
   const [editLocation, setEditLocation] = useState<Location>("partout");
   const [editDuration, setEditDuration] = useState<Duration>("courte");
   const [useOptimalSort, setUseOptimalSort] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const TYPE_ORDER: Record<TaskType, number> = {
     "Travail": 0,
@@ -102,7 +106,14 @@ function TaskListInner() {
       setError(null);
       try {
         const qs = new URLSearchParams();
-        Object.entries(filters).forEach(([k, v]) => { if (v) qs.set(k, String(v)); });
+        Object.entries(filters).forEach(([k, v]) => {
+          if (!v) return;
+          if (k === 'old_only') {
+            qs.set('old_only', '1');
+          } else {
+            qs.set(k, String(v));
+          }
+        });
         const res = await fetch(`/api/tasks?${qs.toString()}`, { cache: "no-store" });
         if (!res.ok) {
           let detail = "";
@@ -121,49 +132,75 @@ function TaskListInner() {
     })();
     return () => { mounted = false; };
   }, [filters]);
-
-  const sorted = useMemo(() => {
-    const arr = [...tasks];
-    if (useOptimalSort) {
-      arr.sort((a, b) => {
-        const dueA = a.due_date ? dayjs(a.due_date).valueOf() : Number.MAX_SAFE_INTEGER;
-        const dueB = b.due_date ? dayjs(b.due_date).valueOf() : Number.MAX_SAFE_INTEGER;
-        if (dueA !== dueB) return dueA - dueB;
-        const impA = IMPORTANCE_ORDER[a.importance];
-        const impB = IMPORTANCE_ORDER[b.importance];
-        if (impA !== impB) return impA - impB;
-        const typeA = TYPE_ORDER[a.type];
-        const typeB = TYPE_ORDER[b.type];
-        if (typeA !== typeB) return typeA - typeB;
-        const durA = DURATION_ORDER[a.duration];
-        const durB = DURATION_ORDER[b.duration];
-        if (durA !== durB) return durA - durB;
-        return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
-      });
-      return arr;
-    }
-    arr.sort((a, b) => {
-      const dir = sortDir === "asc" ? 1 : -1;
-      const getVal = (t: Task) => {
-        switch (sortKey) {
-          case "title": return t.title.toLowerCase();
-          case "type": return t.type;
-          case "importance": return t.importance;
-          case "location": return t.location;
-          case "duration": return t.duration;
-          case "due_date": return t.due_date ? dayjs(t.due_date).valueOf() : Number.MAX_SAFE_INTEGER;
-          case "notes": return (t.notes || "").toLowerCase();
-          default: return 0;
-        }
-      };
-      const va = getVal(a);
-      const vb = getVal(b);
-      if (va < vb) return -1 * dir;
-      if (va > vb) return 1 * dir;
-      return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
+  // Build children map
+  const childrenByParent = useMemo(() => {
+    const map: Record<string, Task[]> = {};
+    tasks.forEach(t => {
+      if (t.parent_id) {
+        const pid = String(t.parent_id);
+        if (!map[pid]) map[pid] = [];
+        map[pid].push(t);
+      }
     });
-    return arr;
-  }, [tasks, sortKey, sortDir, useOptimalSort]);
+    return map;
+  }, [tasks]);
+
+  // Sibling comparison: primary by order_index, then active sort
+  const compareSiblings = (a: Task, b: Task) => {
+    const ai = typeof a.order_index === 'number' ? a.order_index : 0;
+    const bi = typeof b.order_index === 'number' ? b.order_index : 0;
+    if (ai !== bi) return ai - bi;
+    if (useOptimalSort) {
+      const dueA = a.due_date ? dayjs(a.due_date).valueOf() : Number.MAX_SAFE_INTEGER;
+      const dueB = b.due_date ? dayjs(b.due_date).valueOf() : Number.MAX_SAFE_INTEGER;
+      if (dueA !== dueB) return dueA - dueB;
+      const impA = IMPORTANCE_ORDER[a.importance];
+      const impB = IMPORTANCE_ORDER[b.importance];
+      if (impA !== impB) return impA - impB;
+      const typeA = TYPE_ORDER[a.type];
+      const typeB = TYPE_ORDER[b.type];
+      if (typeA !== typeB) return typeA - typeB;
+      const durA = DURATION_ORDER[a.duration];
+      const durB = DURATION_ORDER[b.duration];
+      if (durA !== durB) return durA - durB;
+      return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
+    }
+    const dir = sortDir === "asc" ? 1 : -1;
+    const getVal = (t: Task) => {
+      switch (sortKey) {
+        case "title": return t.title.toLowerCase();
+        case "type": return t.type;
+        case "importance": return t.importance;
+        case "location": return t.location;
+        case "duration": return t.duration;
+        case "due_date": return t.due_date ? dayjs(t.due_date).valueOf() : Number.MAX_SAFE_INTEGER;
+        case "notes": return (t.notes || "").toLowerCase();
+        default: return 0;
+      }
+    };
+    const va = getVal(a);
+    const vb = getVal(b);
+    if (va < vb) return -1 * dir;
+    if (va > vb) return 1 * dir;
+    return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
+  };
+
+  // Flatten visible nodes according to expansion state
+  const visibleNodes = useMemo(() => {
+    const roots = tasks.filter(t => !t.parent_id);
+    roots.sort(compareSiblings);
+    const out: Array<{ t: Task; depth: number }> = [];
+    const pushWithChildren = (t: Task, depth: number) => {
+      out.push({ t, depth });
+      const kids = childrenByParent[t.id];
+      if (kids && expanded[t.id]) {
+        const arr = [...kids].sort(compareSiblings);
+        arr.forEach(c => pushWithChildren(c, depth + 1));
+      }
+    };
+    roots.forEach(r => pushWithChildren(r, 0));
+    return out;
+  }, [tasks, childrenByParent, expanded, useOptimalSort, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -255,7 +292,7 @@ function TaskListInner() {
         <div className="flex items-center justify-between mt-4 mb-3">
           <div className="text-2xl font-semibold">Liste des tâches</div>
           <div className="flex items-center gap-3">
-            <div className="text-sm text-gray-600 dark:text-gray-400">{sorted.length} tâche(s)</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">{visibleNodes.length} tâche(s)</div>
             <button
               onClick={() => setUseOptimalSort(v => !v)}
               className={`px-3 py-1.5 rounded-md border text-sm ${useOptimalSort ? "bg-indigo-600 text-white border-indigo-600" : "border-neutral-200 dark:border-neutral-700 text-gray-700 dark:text-gray-200"}`}
@@ -263,8 +300,24 @@ function TaskListInner() {
             >
               {useOptimalSort ? "Tri optimal activé" : "Tri optimal"}
             </button>
+            <button
+              onClick={() => {
+                const sp = new URLSearchParams(params.toString());
+                if (filters.old_only) sp.delete("old_only"); else sp.set("old_only", "1");
+                window.location.assign(`/tasking/list?${sp.toString()}`);
+              }}
+              className={`px-3 py-1.5 rounded-md border text-sm ${filters.old_only ? 'bg-blue-600 text-white border-blue-600' : 'border-neutral-200 dark:border-neutral-700 text-gray-700 dark:text-gray-200'}`}
+              title={filters.old_only ? "Voir tâches récentes" : "Voir anciennes tâches"}
+            >
+              {filters.old_only ? "Voir tâches récentes" : "Voir anciennes tâches"}
+            </button>
           </div>
         </div>
+        {filters.old_only && (
+          <div className="rounded-lg border border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200 px-3 py-2 text-sm mb-3">
+            Affichage des tâches finies il y a plus de 24h
+          </div>
+        )}
         {error && (
           <div className="rounded-lg border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200 px-3 py-2 text-sm mb-3">
             {error}
@@ -293,11 +346,25 @@ function TaskListInner() {
                 <div className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">Chargement…</div>
               )}
 
-              {/* Desktop rows */}
-              {!loading && sorted.map((t, r) => (
+              {/* Desktop hierarchical rows */}
+              {!loading && visibleNodes.map(({ t, depth }, r) => (
                 <div key={t.id} className={`hidden md:grid border-t dark:border-neutral-800 items-center ${r % 2 === 0 ? "bg-gray-50 dark:bg-neutral-800/50" : ""}`} style={{ gridTemplateColumns: gridColsWithActions }}>
                   <div className="px-4 border-r border-neutral-200 dark:border-neutral-800 self-stretch" title={t.title}>
                     <div className="py-2 text-sm text-gray-900 dark:text-gray-100 truncate flex items-center">
+                      {/* Chevron for expand/collapse if has children */}
+                      <div className="flex items-center" style={{ paddingLeft: `${Math.min(24, depth * 16)}px` }}>
+                        {childrenByParent[t.id]?.length ? (
+                          <button
+                            onClick={() => setExpanded(prev => ({ ...prev, [t.id]: !prev[t.id] }))}
+                            className="mr-2 h-5 w-5 inline-flex items-center justify-center rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                            title={expanded[t.id] ? "Replier" : "Déplier"}
+                          >
+                            <span className="text-xs">{expanded[t.id] ? "▾" : "▸"}</span>
+                          </button>
+                        ) : (
+                          <span className="mr-2 inline-block w-5" />
+                        )}
+                      </div>
                       {editRowId === t.id ? (
                         <input value={editTitle} onChange={(e)=>setEditTitle(e.target.value)} className="h-8 w-full rounded border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 text-gray-900 dark:text-gray-100 text-sm" />
                       ) : t.title}
@@ -383,10 +450,10 @@ function TaskListInner() {
                 </div>
               ))}
 
-              {/* Mobile cards */}
+              {/* Mobile cards: render roots and inline children list */}
               {!loading && (
                 <div className="md:hidden divide-y divide-neutral-200 dark:divide-neutral-800">
-                  {sorted.map((t) => (
+                  {tasks.filter(t => !t.parent_id).sort(compareSiblings).map((t) => (
                     <div key={t.id} className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -420,6 +487,23 @@ function TaskListInner() {
                           )}
                         </div>
                       </div>
+                      {/* Inline children list */}
+                      {childrenByParent[t.id]?.length ? (
+                        <div className="mt-3 space-y-2">
+                          <div className="text-xs text-gray-600 dark:text-gray-400">Sous-tâches</div>
+                          {childrenByParent[t.id].sort(compareSiblings).map((c) => (
+                            <div key={c.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-neutral-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800">
+                              <button onClick={() => beginEdit(c)} className="text-left min-w-0 flex-1">
+                                <div className="truncate text-sm text-gray-900 dark:text-gray-100" title={c.title}>{c.title}</div>
+                              </button>
+                              <span className={`inline-flex items-center text-xs rounded-md px-2 py-1 border
+                                ${c.status === 'a_faire' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200/60 dark:border-green-800/60'
+                                  : c.status === 'en_cours' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200 border-indigo-200/60 dark:border-indigo-800/60'
+                                  : 'bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-200 border-violet-200/60 dark:border-violet-800/60'}`}>{c.status === 'a_faire' ? 'À faire' : c.status === 'en_cours' ? 'En cours' : 'Fini'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <div>
                           <div className="text-xs text-gray-600 dark:text-gray-400">Type</div>

@@ -30,6 +30,7 @@ function CreateTicketInner() {
     location: (params.get("location") || "partout") as Location,
     duration: (params.get("duration") || "courte") as Duration,
   }), [params]);
+  const parentId = params.get("parent_id");
 
   const [title, setTitle] = useState("");
   const [scope, setScope] = useState<Scope>(defaults.scope);
@@ -55,6 +56,7 @@ function CreateTicketInner() {
           scope, type, importance, status, location, duration,
           due_date: due || null,
           notes: notes || null,
+          parent_id: parentId || null,
         }),
       });
       const j = await res.json().catch(() => ({}));
@@ -72,6 +74,11 @@ function CreateTicketInner() {
     <div className="min-h-screen">
       <TopBarSimple title="Création de ticket" />
       <div className="p-6">
+      {parentId && (
+        <div className="mb-4 rounded-lg border border-green-300 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-900/20 dark:text-green-200 px-3 py-2 text-sm">
+          Sous-tâche d'un ticket existant
+        </div>
+      )}
       {error && (
         <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200 px-3 py-2 text-sm">{error}</div>
       )}

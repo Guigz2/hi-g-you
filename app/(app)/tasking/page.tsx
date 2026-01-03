@@ -1,7 +1,8 @@
 "use client";
 import TopBar from "@/components/tasking/TopBar";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import "dayjs/locale/fr";
 
@@ -25,6 +26,8 @@ type Task = {
 	due_date: string | null;
 	notes: string | null;
 	created_at: string;
+  parent_id?: string | null;
+  order_index?: number;
 };
 
 const COLUMNS: { id: Status; title: string }[] = [
@@ -42,6 +45,7 @@ export default function TaskBoard() {
 }
 
 function TaskBoardInner() {
+	const router = useRouter();
 	const params = useSearchParams();
 	const filters = useMemo(() => ({
 		scope: (params.get("scope") || "perso") as any,
@@ -50,7 +54,11 @@ function TaskBoardInner() {
 		status: (params.get("status") || "tous") as any,
 		location: (params.get("location") || "tous") as any,
 		duration: (params.get("duration") || "tous") as any,
+    parent_id: (params.has("parent_id") ? (params.get("parent_id") || null) : undefined) as any,
+	old_only: params.has("old_only"),
 	}), [params]);
+  const focusParentId = params.get("parent_id");
+	const [focusParent, setFocusParent] = useState<Task | null>(null);
 
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -73,6 +81,39 @@ function TaskBoardInner() {
 	const [editLocation, setEditLocation] = useState<Location>("partout");
 	const [editDuration, setEditDuration] = useState<Duration>("courte");
 
+	// Render a recursive tree of subtasks for a given parent
+	const renderSubtaskTree = (parentId: string, depth = 0): React.ReactNode => {
+		const children = tasks
+			.filter(c => c.parent_id === parentId)
+			.sort((a, b) => {
+				const ai = (typeof a.order_index === 'number' ? a.order_index : 0);
+				const bi = (typeof b.order_index === 'number' ? b.order_index : 0);
+				if (ai !== bi) return ai - bi;
+				return dayjs(b.created_at).valueOf() - dayjs(a.created_at).valueOf();
+			});
+		if (!children.length) return null;
+		return (
+			<div className="space-y-2">
+				{children.map((c) => (
+					<div key={c.id} className="space-y-2" style={{ marginLeft: depth * 12 }}>
+						<button type="button" onClick={() => setDetailTask(c)} className="w-full text-left">
+							<div className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-neutral-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800">
+								<div className="truncate text-sm text-gray-900 dark:text-gray-100" title={c.title}>{c.title}</div>
+								<span className={`inline-flex items-center text-xs rounded-md px-2 py-1 border
+								  ${c.status === 'a_faire' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200/60 dark:border-green-800/60'
+								  : c.status === 'en_cours' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200 border-indigo-200/60 dark:border-indigo-800/60'
+								  : 'bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-200 border-violet-200/60 dark:border-violet-800/60'}`}> 
+									{c.status === 'a_faire' ? 'À faire' : c.status === 'en_cours' ? 'En cours' : 'Fini'}
+								</span>
+							</div>
+						</button>
+						{renderSubtaskTree(c.id, depth + 1)}
+					</div>
+				))}
+			</div>
+		);
+	};
+
 	useEffect(() => {
 		const onEsc = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
@@ -91,7 +132,16 @@ function TaskBoardInner() {
 			setError(null);
 			try {
 				const qs = new URLSearchParams();
-				Object.entries(filters).forEach(([k, v]) => { if (v) qs.set(k, String(v)); });
+				Object.entries(filters).forEach(([k, v]) => {
+					if (!v) return;
+					// When focusing, omit parent_id from API request to retrieve full dataset
+					if (focusParentId && k === 'parent_id') return;
+					if (k === 'old_only') {
+						qs.set('old_only', '1');
+					} else {
+						qs.set(k, String(v));
+					}
+				});
 				const res = await fetch(`/api/tasks?${qs.toString()}`, { cache: "no-store" });
 				if (!res.ok) {
 					let detail = "";
@@ -102,14 +152,77 @@ function TaskBoardInner() {
 					}
 					return;
 				}
-				const data: Task[] = await res.json();
-				if (mounted) setTasks(data || []);
+					const data: Task[] = await res.json();
+				if (mounted) {
+					if (focusParentId) {
+						// Build subtree (all descendants) under focusParentId
+						const byParent = new Map<string, Task[]>();
+						for (const t of (data || [])) {
+							if (t.parent_id) {
+								const arr = byParent.get(t.parent_id) || [];
+								arr.push(t);
+								byParent.set(t.parent_id, arr);
+							}
+						}
+						const resultIds = new Set<string>();
+						const stack = [focusParentId];
+						while (stack.length) {
+							const pid = stack.pop()!;
+							const kids = byParent.get(pid) || [];
+							for (const k of kids) {
+								if (!resultIds.has(k.id)) {
+									resultIds.add(k.id);
+									stack.push(k.id);
+								}
+							}
+						}
+						setTasks((data || []).filter(t => resultIds.has(t.id)));
+					} else {
+						setTasks(data || []);
+					}
+				}
 			} finally {
 				if (mounted) setLoading(false);
 			}
 		})();
 		return () => { mounted = false; };
 	}, [filters]);
+				{/* Archive toggle */}
+				<div className="mx-4 mt-2 flex items-center gap-2">
+					<button
+						onClick={() => {
+							const sp = new URLSearchParams(params.toString());
+							if (filters.old_only) sp.delete("old_only"); else sp.set("old_only", "1");
+							router.push(`/tasking?${sp.toString()}`);
+						}}
+						className={`px-3 py-1.5 rounded-md border text-sm ${filters.old_only ? 'bg-blue-600 text-white border-blue-600' : 'border-neutral-200 dark:border-neutral-700 text-gray-700 dark:text-gray-200'}`}
+					>
+						{filters.old_only ? 'Voir tâches récentes' : 'Voir anciennes tâches'}
+					</button>
+					{filters.old_only && (
+						<span className="text-xs text-gray-600 dark:text-gray-400">Affichage des tâches finies il y a plus de 24h</span>
+					)}
+				</div>
+
+	// Load parent task details for focus banner
+	useEffect(() => {
+		if (!focusParentId) { setFocusParent(null); return; }
+		// Try to resolve from current tasks first
+		const local = tasks.find(t => t.id === focusParentId);
+		if (local) { setFocusParent(local); return; }
+		let mounted = true;
+		(async () => {
+			try {
+				const res = await fetch(`/api/tasks?id=${focusParentId}`, { cache: 'no-store' });
+				if (res.ok) {
+					const arr = await res.json();
+					const parent = Array.isArray(arr) ? arr[0] : arr;
+					if (mounted) setFocusParent(parent || null);
+				}
+			} catch {}
+		})();
+		return () => { mounted = false; };
+	}, [focusParentId, tasks]);
 
 	const onDropStatus = async (taskId: string, newStatus: Status) => {
 		await fetch(`/api/tasks`, {
@@ -172,6 +285,26 @@ function TaskBoardInner() {
 		setActionLoading(true);
 		setOverlayError(null);
 		try {
+			// Compute subtree to delete locally after server responds
+			const byParent = new Map<string, Task[]>();
+			for (const t of tasks) {
+				if (t.parent_id) {
+					const arr = byParent.get(t.parent_id) || [];
+					arr.push(t);
+					byParent.set(t.parent_id, arr);
+				}
+			}
+			const idsToDelete = new Set<string>();
+			const stack = [detailTask.id];
+			while (stack.length) {
+				const pid = stack.pop()!;
+				if (!idsToDelete.has(pid)) {
+					idsToDelete.add(pid);
+					const kids = byParent.get(pid) || [];
+					for (const k of kids) stack.push(k.id);
+				}
+			}
+
 			const res = await fetch("/api/tasks", {
 				method: "DELETE",
 				headers: { "Content-Type": "application/json" },
@@ -179,7 +312,7 @@ function TaskBoardInner() {
 			});
 			const j = await res.json().catch(() => ({}));
 			if (!res.ok) throw new Error(j?.error || "Échec de la suppression");
-			setTasks(prev => prev.filter(t => t.id !== detailTask.id));
+			setTasks(prev => prev.filter(t => !idsToDelete.has(t.id)));
 			setDetailTask(null);
 			setEditing(false);
 		} catch (e: any) {
@@ -198,8 +331,58 @@ function TaskBoardInner() {
 						{error}
 					</div>
 				)}
+
+				{/* Focus banner (top) */}
+				{focusParentId && (
+					<div className="mx-4 mt-3 rounded-lg border border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200 px-3 py-2 text-sm flex items-center gap-3">
+						{/* Left: back to parent focus */}
+						{focusParent?.parent_id && (
+							<button
+								onClick={() => {
+									const sp = new URLSearchParams(params.toString());
+									sp.set("parent_id", focusParent.parent_id!);
+									router.push(`/tasking?${sp.toString()}`);
+								}}
+								className="px-3 py-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 text-gray-700 dark:text-gray-200 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+							>
+								Focus parent
+							</button>
+						)}
+
+						{/* Middle: centered text + badges */}
+						<div className="flex items-center gap-3 min-w-0 flex-1 justify-center">
+							<div className="truncate text-center" title={focusParent?.title || ''}>Focus sur les sous-tâches de : <span className="font-semibold">{focusParent?.title || '—'}</span></div>
+							{focusParent?.status && (
+								<span className={`inline-flex items-center text-xs rounded-md px-2 py-1 border
+									${focusParent.status === 'a_faire' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 border-green-200/60 dark:border-green-800/60'
+									: focusParent.status === 'en_cours' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200 border-indigo-200/60 dark:border-indigo-800/60'
+									: 'bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-200 border-violet-200/60 dark:border-violet-800/60'}`}> 
+									{focusParent.status === 'a_faire' ? 'À faire' : focusParent.status === 'en_cours' ? 'En cours' : 'Fini'}
+								</span>
+							)}
+							{focusParent?.due_date && (
+								<span className="inline-flex items-center text-xs rounded-md px-2 py-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/60">
+									{dayjs(focusParent.due_date).locale('fr').format('DD/MM/YYYY')}
+								</span>
+							)}
+						</div>
+
+						{/* Right: quit focus */}
+						<button
+							onClick={() => {
+								const sp = new URLSearchParams(params.toString());
+								sp.delete("parent_id");
+								setFocusParent(null);
+								router.push(`/tasking?${sp.toString()}`);
+							}}
+							className="px-3 py-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 text-gray-700 dark:text-gray-200 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+						>
+							Quitter le focus
+						</button>
+					</div>
+				)}
 				<div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4 px-4">
-					{COLUMNS.map((col) => (
+	                {COLUMNS.map((col) => (
 						<section key={col.id}
 							className="bg-white dark:bg-neutral-900 border dark:border-neutral-800 rounded-xl min-h-[200px]"
 							onDragOver={(e) => e.preventDefault()}
@@ -211,7 +394,8 @@ function TaskBoardInner() {
 							<header className="px-4 py-3 text-2xl font-semibold">{col.title}</header>
 							<div className="space-y-3 px-4 pb-4">
 								{loading && <div className="text-sm text-gray-500">Chargement…</div>}
-								{tasks.filter(t => t.status === col.id).map((t) => (
+									{/* Only render root tasks (no parent) in columns */}
+										{tasks.filter(t => ((focusParentId ? (t.parent_id === focusParentId) : (!t.parent_id || t.parent_id === null)) && t.status === col.id)).map((t) => (
 									<article key={t.id}
 										className={`border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden bg-white/80 dark:bg-neutral-900 ${dragEnabledId === t.id ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
 										draggable={dragEnabledId === t.id}
@@ -317,11 +501,19 @@ function TaskBoardInner() {
 												<div className={`min-h-16 max-h-40 overflow-auto overscroll-contain rounded-md bg-gray-100 dark:bg-neutral-800 text-xs p-2 whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200`}>{t.notes || ""}</div>
 											</div>
 										</div>
+										{/* Subtasks list (recursive) */}
+										{renderSubtaskTree(t.id) && (
+											<div className="px-4 pb-3">
+												<div className="text-sm font-medium mb-2">Sous-tâches</div>
+												{renderSubtaskTree(t.id)}
+											</div>
+										)}
 									</article>
 								))}
 							</div>
 						</section>
 					))}
+
 				</div>
 
 				{detailTask && (
@@ -447,13 +639,55 @@ function TaskBoardInner() {
 										<div className="text-xs text-gray-600 dark:text-gray-400">Créée le {dayjs(detailTask.created_at).locale('fr').format('DD/MM/YYYY HH:mm')}</div>
 									</div>
 
-									<div>
+										<div>
 										<div className="text-gray-700 dark:text-gray-300 text-sm mb-2">Notes</div>
 										{editing ? (
 											<textarea value={editNotes} onChange={(e)=>setEditNotes(e.target.value)} rows={12} className="w-full rounded-md border dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400" />
 										) : (
 											<div className="min-h-40 rounded-md bg-gray-100 dark:bg-neutral-800 text-sm p-3 whitespace-pre-wrap text-gray-800 dark:text-gray-200">{detailTask.notes || ''}</div>
 										)}
+
+											{/* Subtasks inside overlay */}
+											{/* Parent link */}
+											{detailTask.parent_id && (
+												<div className="mt-6">
+													<div className="text-gray-700 dark:text-gray-300 text-sm mb-2">Tâche parente</div>
+													<button
+														onClick={async () => {
+															// Try local first
+															const localParent = tasks.find(x => x.id === detailTask.parent_id);
+															if (localParent) {
+																setDetailTask(localParent);
+																setEditing(false);
+																return;
+															}
+															try {
+																const res = await fetch(`/api/tasks?id=${detailTask.parent_id}`, { cache: "no-store" });
+																if (res.ok) {
+																	const arr = await res.json();
+																	const parent = Array.isArray(arr) ? arr[0] : arr;
+																	if (parent) {
+																		setDetailTask(parent as any);
+																		setEditing(false);
+																	}
+																}
+															} catch {}
+														}}
+														className="w-full text-left flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-neutral-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800"
+													>
+														<span className="truncate text-sm text-gray-900 dark:text-gray-100">{tasks.find(x => x.id === detailTask.parent_id)?.title ?? 'Revenir à la tâche parente'}</span>
+														<span className="text-xs text-gray-600 dark:text-gray-400">▲</span>
+													</button>
+												</div>
+											)}
+
+											{/* Subtasks inside overlay (recursive) */}
+											{renderSubtaskTree(detailTask.id) && (
+												<div className="mt-6">
+													<div className="text-gray-700 dark:text-gray-300 text-sm mb-2">Sous-tâches</div>
+													{renderSubtaskTree(detailTask.id)}
+												</div>
+											)}
 									</div>
 								</div>
 
@@ -471,6 +705,40 @@ function TaskBoardInner() {
 										) : (
 											<button onClick={beginEdit} className="h-10 px-4 inline-flex items-center justify-center leading-none rounded-md border border-neutral-200 dark:border-neutral-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-neutral-100 dark:hover:bg-neutral-800">Modifier</button>
 										)}
+										{/* Add subtask button */}
+										{!editing && detailTask && (
+											<button
+												onClick={() => {
+													const qs = new URLSearchParams({
+														parent_id: detailTask.id,
+														scope: detailTask.scope,
+														type: detailTask.type,
+														importance: detailTask.importance,
+														status: "a_faire",
+														location: detailTask.location,
+														duration: detailTask.duration,
+													});
+												router.push(`/tasking/create?${qs.toString()}`);
+											}}
+											className="h-10 px-4 inline-flex items-center justify-center leading-none rounded-md bg-green-600 hover:bg-green-700 dark:hover:bg-green-500 text-white text-sm"
+										>
+											Ajouter une sous-tâche
+										</button>
+										)}
+
+	                {/* Focus button to filter board by children */}
+	                {!editing && detailTask && (
+	                  <button
+	                    onClick={() => {
+	                      const sp = new URLSearchParams(params.toString());
+	                      sp.set("parent_id", detailTask.id);
+	                      router.push(`/tasking?${sp.toString()}`);
+	                    }}
+	                    className="h-10 px-4 inline-flex items-center justify-center leading-none rounded-md bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white text-sm"
+	                  >
+	                    Focus sur les sous-tâches
+	                  </button>
+	                )}
 										<button onClick={() => { setDetailTask(null); setEditing(false); }} className="h-10 px-4 inline-flex items-center justify-center leading-none rounded-md border border-neutral-200 dark:border-neutral-700 text-sm text-gray-700 dark:text-gray-200 hover:bg-neutral-100 dark:hover:bg-neutral-800">Fermer</button>
 									</div>
 								</div>
