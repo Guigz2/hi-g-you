@@ -46,6 +46,12 @@ export default function Home() {
       href: 'https://stamp.eguguillaume.com',
     },
     {
+      title:'Brief App',
+      color: 'from-purple-500 to-fuchsia-600',
+      image: '/icons/homepage/supermarket-icon.png',
+      href: '/brief_dj'
+    },
+    {
       title: 'Portfolio',
       color: 'from-teal-500 to-cyan-600',
         image: '/icons/homepage/portfolio-icon.png',
